@@ -1,0 +1,54 @@
+"""{{ display_name }} - FastAPI application."""
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+
+app = FastAPI(
+    title="{{ display_name }}",
+    description="A Traylinx Agent",
+    version="{{ version }}",
+)
+
+
+class RunRequest(BaseModel):
+    """Request payload for /a2a/run endpoint."""
+    
+    input: str | dict | None = None
+    parameters: dict | None = None
+
+
+class RunResponse(BaseModel):
+    """Response payload for /a2a/run endpoint."""
+    
+    success: bool
+    result: str | dict | None = None
+    error: str | None = None
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    return {"status": "healthy"}
+
+
+@app.post("/a2a/run", response_model=RunResponse)
+async def run(request: RunRequest):
+    """
+    Main agent endpoint.
+    
+    This is where your agent's logic goes!
+    """
+    try:
+        # TODO: Implement your agent logic here
+        result = f"Received input: {request.input}"
+        
+        return RunResponse(success=True, result=result)
+    except Exception as e:
+        return RunResponse(success=False, error=str(e))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

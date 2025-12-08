@@ -1,0 +1,32 @@
+manifest_version: "1.0"
+
+info:
+  name: {{ agent_name }}
+  display_name: {{ display_name }}
+  version: {{ version }}
+  description: A Traylinx agent that does amazing things
+  author:
+    name: {{ author_name }}
+    email: {{ author_email }}
+  tags:
+    - general
+    - example
+
+capabilities:
+  - key: domain
+    value: general
+    description: General-purpose agent
+  - key: op
+    value: execute
+    description: Executes tasks
+
+endpoints:
+  - path: /a2a/run
+    method: POST
+    description: Execute the agent's main functionality
+    timeout_seconds: 60
+    auth_required: true
+
+pricing:
+  model: free
+  currency: CREDITS

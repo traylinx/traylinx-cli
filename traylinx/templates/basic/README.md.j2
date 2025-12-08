@@ -1,0 +1,40 @@
+# {{ display_name }}
+
+A Traylinx agent built with ❤️
+
+## Quick Start
+
+```bash
+# Install dependencies
+pip install -e .
+
+# Validate manifest
+traylinx validate
+
+# Run locally
+uvicorn app.main:app --reload
+
+# Publish to Traylinx
+traylinx publish
+```
+
+## Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/a2a/run` | POST | Main agent endpoint |
+| `/health` | GET | Health check |
+
+## Development
+
+```bash
+# Run tests
+pytest
+
+# Format code
+ruff format .
+```
+
+## License
+
+MIT

@@ -25,11 +25,19 @@ def version_callback(value: bool):
         console.print(f"[bold blue]traylinx[/bold blue] v{__version__}")
         console.print(f"[dim]Environment: {settings.env}[/dim]")
         console.print(f"[dim]Registry: {settings.effective_registry_url}[/dim]")
+        
+        # Show installed plugins
+        from traylinx.plugins import discover_plugins
+        plugins = discover_plugins()
+        if plugins:
+            console.print(f"[dim]Plugins: {', '.join(plugins.keys())}[/dim]")
+        
         raise typer.Exit()
 
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def main(
+    ctx: typer.Context,
     version: bool = typer.Option(
         None,
         "--version",
@@ -42,11 +50,16 @@ def main(
     """
     [bold blue]Traylinx CLI[/bold blue] - Build and publish agents to the Traylinx Network.
     
-    [bold]Commands:[/bold]
+    [bold]Core Commands:[/bold]
     
     • [cyan]traylinx init[/cyan] - Create a new agent project
     • [cyan]traylinx validate[/cyan] - Validate your manifest
     • [cyan]traylinx publish[/cyan] - Publish to the catalog
+    
+    [bold]Plugin Commands:[/bold]
+    
+    • [cyan]traylinx plugin list[/cyan] - Show installed plugins
+    • [cyan]traylinx plugin install[/cyan] - Install a plugin
     
     [bold]Configuration:[/bold]
     
@@ -55,16 +68,41 @@ def main(
     [dim]TRAYLINX_REGISTRY_URL[/dim] - API URL
     [dim]TRAYLINX_AGENT_KEY[/dim] - Your agent key
     [dim]TRAYLINX_SECRET_TOKEN[/dim] - Your secret token
+    
+    💡 [dim]Install more features:[/dim] [cyan]traylinx plugin install stargate[/cyan]
     """
     pass
 
 
-# Import and register commands
+# Import and register core commands
 from traylinx.commands import init, validate, publish
+from traylinx.commands import plugin as plugin_cmd
+from traylinx.commands import auth as auth_cmd
 
 app.command(name="init")(init.init_command)
 app.command(name="validate")(validate.validate_command)
 app.command(name="publish")(publish.publish_command)
+
+# Register auth commands
+app.command(name="login")(auth_cmd.login_command)
+app.command(name="logout")(auth_cmd.logout_command)
+app.command(name="whoami")(auth_cmd.whoami_command)
+
+# Register plugin management commands
+app.add_typer(plugin_cmd.app, name="plugin")
+
+
+# Load plugins at import time so they're available for command matching
+def _load_plugins():
+    """Load all discovered plugins as sub-apps."""
+    from traylinx.plugins import discover_plugins
+    
+    for name, plugin_app in discover_plugins().items():
+        app.add_typer(plugin_app, name=name)
+
+
+# Load plugins immediately
+_load_plugins()
 
 
 if __name__ == "__main__":

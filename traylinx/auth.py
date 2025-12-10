@@ -130,9 +130,14 @@ class AuthManager:
                 
                 AuthManager.save_credentials(creds)
                 
+                # Load organization/project context from API
+                from traylinx.context import ContextManager
+                ContextManager.load_from_api()
+                
+                # Show branded welcome message
+                from traylinx.branding import print_welcome
                 email = creds["user"].get("email", "unknown")
-                console.print(f"\n[green]✅ Logged in as {email}[/green]")
-                console.print(f"[dim]Token saved to {CREDENTIALS_FILE}[/dim]\n")
+                print_welcome(email=email)
                 
                 return creds
             
@@ -190,6 +195,46 @@ class AuthManager:
         return "access_token" in creds
 
     @staticmethod
+    def validate_token() -> bool:
+        """
+        Validate current access token with the server.
+        
+        Calls /oauth/token/info to check if the token is still valid.
+        This is more reliable than just checking local expiration.
+        
+        Returns:
+            True if token is valid, False otherwise
+        """
+        creds = AuthManager.get_credentials()
+        if not creds or "access_token" not in creds:
+            return False
+        
+        try:
+            response = httpx.get(
+                f"{SENTINEL_URL}/oauth/token/info",
+                headers={"Authorization": f"Bearer {creds['access_token']}"},
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                # Token is valid - optionally update local expiry from server
+                data = response.json()
+                if "expires_in" in data:
+                    expires_at = datetime.now(timezone.utc) + timedelta(
+                        seconds=data["expires_in"]
+                    )
+                    creds["expires_at"] = expires_at.isoformat()
+                    AuthManager.save_credentials(creds)
+                return True
+            else:
+                # Token invalid or expired
+                return False
+                
+        except httpx.HTTPError as e:
+            console.print(f"[dim]Token validation error: {e}[/dim]")
+            return False
+
+    @staticmethod
     def get_access_token() -> Optional[str]:
         """Get access token, refreshing if needed."""
         creds = AuthManager.get_credentials()
@@ -214,41 +259,122 @@ class AuthManager:
 
     @staticmethod
     def refresh_token() -> bool:
-        """Refresh access token using refresh token."""
+        """
+        Refresh access token using refresh token.
+        
+        Tries /devices/refresh first (CLI-specific), then falls back to 
+        standard OAuth /oauth/token endpoint.
+        """
         creds = AuthManager.get_credentials()
         if not creds or "refresh_token" not in creds:
             return False
         
-        try:
-            response = httpx.post(
-                f"{SENTINEL_URL}/oauth/token",
-                data={
+        refresh_token_value = creds["refresh_token"]
+        
+        # Try CLI-specific endpoint first
+        endpoints = [
+            # CLI-specific endpoint (no client credentials needed)
+            {
+                "url": f"{SENTINEL_URL}/devices/refresh",
+                "data": {"refresh_token": refresh_token_value},
+                "headers": {"Content-Type": "application/json"},
+                "json": True,
+            },
+            # Standard OAuth endpoint (fallback)
+            {
+                "url": f"{SENTINEL_URL}/oauth/token",
+                "data": {
                     "grant_type": "refresh_token",
-                    "refresh_token": creds["refresh_token"]
+                    "refresh_token": refresh_token_value,
                 },
+                "headers": {"Content-Type": "application/x-www-form-urlencoded"},
+                "json": False,
+            },
+        ]
+        
+        for endpoint in endpoints:
+            try:
+                if endpoint["json"]:
+                    response = httpx.post(
+                        endpoint["url"],
+                        json=endpoint["data"],
+                        timeout=30
+                    )
+                else:
+                    response = httpx.post(
+                        endpoint["url"],
+                        data=endpoint["data"],
+                        headers=endpoint["headers"],
+                        timeout=30
+                    )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    expires_at = datetime.now(timezone.utc) + timedelta(
+                        seconds=data.get("expires_in", 7200)
+                    )
+                    
+                    creds["access_token"] = data["access_token"]
+                    creds["expires_at"] = expires_at.isoformat()
+                    
+                    if "refresh_token" in data:
+                        creds["refresh_token"] = data["refresh_token"]
+                    
+                    AuthManager.save_credentials(creds)
+                    console.print("[green]✓ Token refreshed[/green]")
+                    return True
+                    
+                elif response.status_code == 404:
+                    # Endpoint not available, try next
+                    continue
+                else:
+                    # Log error for debugging
+                    console.print(f"[dim]Token refresh failed: {response.status_code}[/dim]")
+                    
+            except httpx.HTTPError as e:
+                console.print(f"[dim]Token refresh error: {e}[/dim]")
+        
+        return False
+
+    @staticmethod
+    def revoke_token(all_devices: bool = False) -> bool:
+        """
+        Revoke access token on the backend.
+        
+        Args:
+            all_devices: If True, revoke tokens on all devices. Otherwise, only current.
+            
+        Returns:
+            True if revocation was successful
+        """
+        creds = AuthManager.get_credentials()
+        if not creds or "access_token" not in creds:
+            return False
+        
+        access_token = creds["access_token"]
+        
+        try:
+            url = f"{SENTINEL_URL}/oauth/token/revoke"
+            if not all_devices:
+                url += "?logoutCurrentDevice=true"
+            
+            response = httpx.get(
+                url,
+                headers={"Authorization": f"Bearer {access_token}"},
                 timeout=30
             )
             
             if response.status_code == 200:
-                data = response.json()
-                
-                expires_at = datetime.now(timezone.utc) + timedelta(
-                    seconds=data.get("expires_in", 7200)
-                )
-                
-                creds["access_token"] = data["access_token"]
-                creds["expires_at"] = expires_at.isoformat()
-                
-                if "refresh_token" in data:
-                    creds["refresh_token"] = data["refresh_token"]
-                
-                AuthManager.save_credentials(creds)
                 return True
+            else:
+                # Log the error but don't fail - we'll still clear local credentials
+                console.print(f"[dim]Warning: Could not revoke token on server (status {response.status_code})[/dim]")
+                return False
                 
-        except httpx.HTTPError:
-            pass
-        
-        return False
+        except httpx.HTTPError as e:
+            console.print(f"[dim]Warning: Could not reach server to revoke token: {e}[/dim]")
+            return False
 
     @staticmethod
     def get_user() -> Optional[dict]:
@@ -257,3 +383,4 @@ class AuthManager:
         if not creds:
             return None
         return creds.get("user")
+

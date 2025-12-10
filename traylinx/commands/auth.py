@@ -46,7 +46,13 @@ def login(
 
 
 @app.command("logout")
-def logout():
+def logout(
+    all_devices: bool = typer.Option(
+        False,
+        "--all-devices",
+        help="Logout from all devices, not just this CLI"
+    )
+):
     """Log out of your Traylinx account."""
     if not AuthManager.is_logged_in():
         console.print("[yellow]Not logged in.[/yellow]")
@@ -56,9 +62,16 @@ def logout():
     user = AuthManager.get_user()
     email = user.get("email", "unknown") if user else "unknown"
     
-    # Clear credentials
+    # Revoke token on backend
+    AuthManager.revoke_token(all_devices=all_devices)
+    
+    # Clear local credentials
     AuthManager.clear_credentials()
-    console.print(f"[green]✅ Logged out from {email}[/green]")
+    
+    if all_devices:
+        console.print(f"[green]✅ Logged out from {email} on all devices[/green]")
+    else:
+        console.print(f"[green]✅ Logged out from {email}[/green]")
 
 
 @app.command("whoami")

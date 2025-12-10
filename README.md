@@ -2,6 +2,25 @@
 
 **The command-line interface for the Traylinx Agent Network.**
 
+## Installation
+
+### Using pipx (Recommended)
+
+[pipx](https://pipx.pypa.io/) installs CLI tools in isolated environments:
+
+```bash
+pipx install traylinx-cli
+```
+
+### Using Homebrew (macOS/Linux)
+
+```bash
+brew tap traylinx/traylinx
+brew install traylinx
+```
+
+### Using pip
+
 ```bash
 pip install traylinx-cli
 ```

@@ -26,6 +26,12 @@ METRICS_API_URL = os.environ.get(
     "https://api.makakoo.com/ma-metrics-wsp-ms/v1/api"
 )
 
+# Users API URL (for creating agent users with OAuth credentials)
+USERS_API_URL = os.environ.get(
+    "TRAYLINX_USERS_URL",
+    "https://api.makakoo.com/ma-users-ms/v1/api"
+)
+
 # Credentials storage directory
 CREDENTIALS_DIR = Path.home() / ".traylinx" / "credentials"
 
@@ -172,59 +178,112 @@ def create_asset(
 
 
 def _create_sentinel_pass(org_id: str, project_id: str, name: str, description: Optional[str], save: bool):
-    """Create a Sentinel Pass (Security & Identity asset)."""
+    """Create a Sentinel Pass (Security & Identity asset).
+    
+    This follows the same flow as the React app:
+    1. Create an agent user via Users API (which creates OAuth credentials in Sentinel)
+    2. Create a studio tool asset that links to the agent user
+    """
     console.print(f"Creating Sentinel Pass [bold]{name}[/bold]...")
     
-    # Generate unique entity ID
-    entity_id = f"sentinel-pass-{uuid.uuid4().hex[:8]}"
+    # Get the current user ID from the auth context
+    creds = AuthManager.get_credentials()
+    if not creds:
+        console.print("[red]Not logged in.[/red]")
+        raise typer.Exit(1)
     
-    payload = {
-        "studioTool": {
-            "entityType": "sentinel_pass",
-            "assetType": "security",  # Security & Identity category
-            "entityId": entity_id,
-            "title": name,
+    user_id = creds.get("user_id")
+    if not user_id:
+        console.print("[red]User ID not found in credentials.[/red]")
+        raise typer.Exit(1)
+    
+    # Step 1: Create agent user via Users API (this creates OAuth credentials)
+    console.print("[dim]Step 1/2: Creating agent user with OAuth credentials...[/dim]")
+    
+    agent_payload = {
+        "agent": {
+            "agentType": "internal_service",
+            "name": name,
             "description": description or "OAuth credentials for A2A authentication",
-            "visibility": "privately_visible",
-            "tags": ["oauth", "a2a", "sentinel-pass", "authentication"],
             "metadata": {
-                "accessLevel": "standard",
-                "permissions": "read,write",
-                "usageType": "CLI created",
-                "autoCreated": False
+                "createdBy": "traylinx-cli",
+                "projectId": project_id,
+                "organizationId": org_id
             },
-            "active": True,
-            "deploymentStatus": "not_deployed"
+            "customAttributes": {}
         }
     }
     
     try:
-        response = httpx.post(
-            f"{METRICS_API_URL}/organizations/{org_id}/projects/{project_id}/studio_tools",
-            json=payload,
+        # Create agent user (which creates OAuth app in Sentinel)
+        agent_response = httpx.post(
+            f"{USERS_API_URL}/users/{user_id}/agents",
+            json=agent_payload,
             headers=_get_headers(),
             timeout=30
         )
-        response.raise_for_status()
-        data = response.json()
+        agent_response.raise_for_status()
+        agent_data = agent_response.json()
         
-        asset = data.get("data", {})
+        agent = agent_data.get("data", {})
+        agent_id = agent.get("id")
+        agent_attrs = agent.get("attributes", {})
+        
+        # Extract OAuth credentials from agent response
+        oauth_creds = agent_attrs.get("oauthCredentials", {})
+        client_id = oauth_creds.get("clientId", oauth_creds.get("client_id", ""))
+        client_secret = oauth_creds.get("clientSecret", oauth_creds.get("client_secret", ""))
+        
+        if not client_id or not client_secret:
+            console.print("[yellow]Warning: OAuth credentials not returned from Users API.[/yellow]")
+            console.print("[dim]The agent was created but credentials may need to be retrieved separately.[/dim]")
+        
+        # Step 2: Create studio tool asset linked to the agent
+        console.print("[dim]Step 2/2: Creating asset linked to agent...[/dim]")
+        
+        entity_id = f"sentinel-pass-{agent_id}"
+        
+        asset_payload = {
+            "studioTool": {
+                "entityType": "sentinel_pass",
+                "assetType": "security",
+                "entityId": entity_id,
+                "title": name,
+                "description": description or "OAuth credentials for A2A authentication",
+                "visibility": "privately_visible",
+                "tags": ["oauth", "a2a", "sentinel-pass", "authentication"],
+                "metadata": {
+                    "agentUserId": agent_id,
+                    "clientId": client_id,
+                    "accessLevel": "standard",
+                    "permissions": "read,write",
+                    "usageType": "CLI created",
+                    "autoCreated": True,
+                    "createdBy": user_id
+                },
+                "active": True,
+                "deploymentStatus": "not_deployed"
+            }
+        }
+        
+        asset_response = httpx.post(
+            f"{METRICS_API_URL}/organizations/{org_id}/projects/{project_id}/studio_tools",
+            json=asset_payload,
+            headers=_get_headers(),
+            timeout=30
+        )
+        asset_response.raise_for_status()
+        asset_data = asset_response.json()
+        
+        asset = asset_data.get("data", {})
         asset_id = asset.get("id")
-        attrs = asset.get("attributes", {})
-        
-        # Extract OAuth credentials from response
-        # These may be in attributes.metadata or a separate credentials field
-        metadata = attrs.get("metadata", {})
-        credentials = attrs.get("oauthCredentials", metadata.get("oauthCredentials", {}))
-        
-        client_id = credentials.get("clientId", credentials.get("client_id", ""))
-        client_secret = credentials.get("clientSecret", credentials.get("client_secret", ""))
         
         # Display success
         console.print(f"\n[green]✓ Sentinel Pass created![/green]")
         console.print(Panel(
             f"[bold]{name}[/bold]\n"
             f"Asset ID: {asset_id}\n"
+            f"Agent ID: {agent_id}\n"
             f"Type: Security & Identity",
             title="🔐 Sentinel Pass"
         ))
@@ -233,22 +292,26 @@ def _create_sentinel_pass(org_id: str, project_id: str, name: str, description: 
             console.print("\n[bold yellow]⚠️  Save these credentials - they will only be shown once![/bold yellow]\n")
             console.print(f"  [bold]Client ID:[/bold]     {client_id}")
             console.print(f"  [bold]Client Secret:[/bold] {client_secret}")
+            console.print(f"  [bold]Agent User ID:[/bold] {agent_id}")
             
             if save:
                 _save_credentials(project_id, name, {
                     "asset_id": asset_id,
+                    "agent_user_id": agent_id,
                     "client_id": client_id,
                     "client_secret": client_secret,
                     "name": name
                 })
         else:
-            console.print("\n[dim]Note: OAuth credentials may need to be retrieved separately.[/dim]")
+            console.print("\n[dim]Note: OAuth credentials were not returned. Check Sentinel directly.[/dim]")
             console.print(f"Asset ID: [cyan]{asset_id}[/cyan]")
+            console.print(f"Agent ID: [cyan]{agent_id}[/cyan]")
         
         console.print("\n[dim]Use these credentials in your agent's manifest for A2A authentication.[/dim]")
         
     except httpx.HTTPStatusError as e:
-        console.print(f"[red]Error creating Sentinel Pass: {e.response.status_code}[/red]")
+        error_source = "Users API" if "users" in str(e.request.url) else "Metrics API"
+        console.print(f"[red]Error creating Sentinel Pass ({error_source}): {e.response.status_code}[/red]")
         try:
             error_data = e.response.json()
             if "message" in error_data:

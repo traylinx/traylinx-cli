@@ -2,6 +2,8 @@
 
 **The command-line interface for the Traylinx Agent Network.**
 
+Build, run, and share AI agents with Docker-powered simplicity.
+
 ## Installation
 
 ### Using pipx (Recommended)
@@ -30,29 +32,79 @@ pip install traylinx-cli
 ```bash
 # Create a new agent
 traylinx init my-agent
-
-# Navigate to project
 cd my-agent
 
-# Validate manifest
-traylinx validate
+# Run locally with Docker
+traylinx run
 
-# Publish to catalog
-traylinx publish
+# View logs
+traylinx logs
+
+# Stop the agent
+traylinx stop
 ```
 
-## Commands
+## 🐳 Docker-Powered Agent Commands
+
+Run agents anywhere with zero configuration — just Docker.
+
+| Command | Description |
+|---------|-------------|
+| `traylinx run` | 🚀 Start agent via Docker Compose |
+| `traylinx stop` | ⏹️ Stop running agent containers |
+| `traylinx logs` | 📋 Stream agent logs |
+| `traylinx list` | 📊 List all running agents |
+
+### Run Options
+
+```bash
+traylinx run                  # Run in background (detached)
+traylinx run --no-detach      # Run in foreground (see logs)
+traylinx run --prod           # Use production config (Postgres)
+traylinx run --native         # Skip Docker, use local Python
+```
+
+## 📦 Publishing & Sharing Agents
+
+Share your agents with anyone via GitHub Container Registry.
+
+| Command | Description |
+|---------|-------------|
+| `traylinx publish` | 📦 Build multi-arch image + push to GHCR |
+| `traylinx pull <agent>` | ⬇️ Download and run any published agent |
+
+### Publish Your Agent
+
+```bash
+cd my-agent
+traylinx publish
+# → Building for linux/amd64,linux/arm64...
+# → Pushing to ghcr.io/traylinx/my-agent:1.0.0
+# → ✓ Published!
+```
+
+### Run Any Agent
+
+```bash
+# The "Ollama experience" for agents
+traylinx pull weather-agent
+# → Pulling from ghcr.io/traylinx/weather-agent:latest
+# → ✓ Agent running at http://localhost:8000
+```
+
+## Core Commands
 
 | Command | Description |
 |---------|-------------|
 | `traylinx init <name>` | Create new agent project |
 | `traylinx validate` | Validate traylinx-agent.yaml |
-| `traylinx publish` | Publish to Traylinx catalog |
+| `traylinx login` | Log in to your Traylinx account |
+| `traylinx status` | Show CLI status and config |
 | `traylinx --help` | Show all commands |
 
 ## Configuration
 
-### Environment Variables (Recommended)
+### Environment Variables
 
 ```bash
 export TRAYLINX_ENV=dev                           # dev, staging, prod
@@ -76,18 +128,19 @@ credentials:
 
 ```
 traylinx/
-├── constants.py      # All URLs, endpoints, env vars
 ├── cli.py            # Main CLI entry point
 ├── commands/
 │   ├── init.py       # Create projects
 │   ├── validate.py   # Validate manifests
-│   └── publish.py    # Publish to catalog
+│   ├── publish.py    # Publish to catalog
+│   └── docker_cmd.py # Docker-powered commands
+├── utils/
+│   ├── docker.py     # Docker detection + compose
+│   └── registry.py   # GHCR integration
 ├── api/
 │   └── registry.py   # API client
 ├── models/
 │   └── manifest.py   # Pydantic models
-├── utils/
-│   └── config.py     # Config loading
 └── templates/        # Project templates
 ```
 
@@ -103,6 +156,12 @@ uv run pytest
 # Run CLI locally
 uv run traylinx --help
 ```
+
+## Requirements
+
+- **Python 3.11+** (for CLI)
+- **Docker** (for `run`, `publish`, `pull` commands)
+- **Docker Buildx** (for multi-arch builds, optional)
 
 ## License
 

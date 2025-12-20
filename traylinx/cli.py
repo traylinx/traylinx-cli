@@ -50,6 +50,13 @@ def main(
     """
     [bold blue]Traylinx CLI[/bold blue] - Build and publish agents to the Traylinx Network.
     
+    [bold]Docker-Powered Agent Commands:[/bold]
+    
+    • [cyan]traylinx run[/cyan] - Start agent via Docker Compose
+    • [cyan]traylinx stop[/cyan] - Stop running agent
+    • [cyan]traylinx logs[/cyan] - View agent logs
+    • [cyan]traylinx list[/cyan] - List running agents
+    
     [bold]Core Commands:[/bold]
     
     • [cyan]traylinx init[/cyan] - Create a new agent project
@@ -84,6 +91,8 @@ from traylinx.commands import orgs as orgs_cmd
 from traylinx.commands import projects as projects_cmd
 from traylinx.commands import assets as assets_cmd
 from traylinx.commands import open_cmd
+from traylinx.commands import docker_cmd
+from traylinx.commands import stargate as stargate_cmd
 
 
 app.command(name="init")(init.init_command)
@@ -110,6 +119,22 @@ app.add_typer(plugin_cmd.app, name="plugin")
 app.add_typer(orgs_cmd.app, name="orgs")
 app.add_typer(projects_cmd.app, name="projects")
 app.add_typer(assets_cmd.app, name="assets")
+
+# Register Docker-powered agent commands
+app.command(name="run")(docker_cmd.run_command)
+app.command(name="stop")(docker_cmd.stop_command)
+app.command(name="logs")(docker_cmd.logs_command)
+app.command(name="list")(docker_cmd.list_command)
+app.command(name="publish")(docker_cmd.publish_command)
+app.command(name="pull")(docker_cmd.pull_command)
+
+# Register Stargate P2P commands
+app.add_typer(stargate_cmd.app, name="stargate")
+
+# Top-level aliases for common Stargate commands (Phase 2)
+app.command(name="discover", help="Alias for 'stargate peers'")(stargate_cmd.peers_command)
+app.command(name="call", help="Alias for 'stargate call'")(stargate_cmd.call_command)
+app.command(name="certify", help="Alias for 'stargate certify'")(stargate_cmd.certify_command)
 
 
 # Load plugins at import time so they're available for command matching

@@ -1,8 +1,27 @@
-# Traylinx CLI
+# 🚀 Traylinx CLI
 
-**The command-line interface for the Traylinx Agent Network.**
+<div align="center">
+  <img src="https://public-uploads-ma-production.s3.eu-west-1.amazonaws.com/traylinx_cli_logo.png" alt="Traylinx CLI Logo" width="120"/>
 
-Build, run, and share AI agents with Docker-powered simplicity.
+  The command-line interface for the **Traylinx Agent Network**. Build, run, and share AI agents with Docker-powered simplicity.
+
+  **Version:** 0.2.0 | **Python:** 3.11+ | **Status:** Production-Ready
+
+  [![Status](https://img.shields.io/badge/status-production--ready-success)](https://github.com/traylinx/traylinx-cli)
+  [![PyPI](https://img.shields.io/pypi/v/traylinx-cli)](https://pypi.org/project/traylinx-cli/)
+</div>
+
+---
+
+## 📚 Documentation Navigation
+
+| Document | Description | Audience |
+|----------|-------------|----------|
+| **[🏗️ Architecture](./docs/ARCHITECTURE.md)** | Plugin System & Command Structure | Architects / Developers |
+| **[📖 Command Reference](./docs/COMMAND_REFERENCE.md)** | All CLI Commands | Developers |
+| **[🔌 Setup Guide](./docs/SETUP_GUIDE.md)** | Installation & Configuration | Users / DevOps |
+
+---
 
 ## Installation
 

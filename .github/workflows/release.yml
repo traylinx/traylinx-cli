@@ -28,11 +28,19 @@ jobs:
     needs: pypi-publish
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - name: Get version from tag
+        id: version
+        run: |
+          TAG=${{ github.event.release.tag_name }}
+          VERSION=${TAG#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Update Homebrew formula
         uses: mislav/bump-homebrew-formula-action@v3
         with:
           formula-name: traylinx
           homebrew-tap: traylinx/homebrew-traylinx
-          download-url: https://files.pythonhosted.org/packages/source/t/traylinx-cli/traylinx_cli-${{ github.event.release.tag_name }}.tar.gz
+          base-branch: main
+          download-url: https://files.pythonhosted.org/packages/source/t/traylinx-cli/traylinx_cli-${{ steps.version.outputs.version }}.tar.gz
         env:
           COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

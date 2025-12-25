@@ -42,6 +42,14 @@ Repository = "https://github.com/traylinx/traylinx-cli"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["traylinx"]
 

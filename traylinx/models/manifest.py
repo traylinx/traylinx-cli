@@ -11,7 +11,7 @@ from pydantic import BaseModel, EmailStr, Field, HttpUrl, model_validator
 
 class AuthorInfo(BaseModel):
     """Agent author information."""
-    
+
     name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr | None = None
     url: HttpUrl | None = None
@@ -19,7 +19,7 @@ class AuthorInfo(BaseModel):
 
 class AgentInfo(BaseModel):
     """Agent identity and metadata."""
-    
+
     name: str = Field(
         ...,
         min_length=2,
@@ -37,7 +37,7 @@ class AgentInfo(BaseModel):
     license: str | None = Field(None, max_length=50)
     homepage: HttpUrl | None = None
     tags: list[str] = Field(default_factory=list, max_length=10)
-    
+
     @model_validator(mode="after")
     def validate_name_format(self) -> Self:
         """Validate name is RFC 1035 label format."""
@@ -49,45 +49,41 @@ class AgentInfo(BaseModel):
         if "--" in self.name:
             raise ValueError("Name cannot contain consecutive hyphens")
         return self
-    
+
     @model_validator(mode="after")
     def validate_semver(self) -> Self:
         """Validate version is semver format."""
         if not re.match(r"^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$", self.version):
-            raise ValueError(
-                "Version must be semver format (e.g., 1.0.0, 2.1.0-beta)"
-            )
+            raise ValueError("Version must be semver format (e.g., 1.0.0, 2.1.0-beta)")
         return self
 
 
 class AgentCapability(BaseModel):
     """Agent capability declaration."""
-    
+
     key: Literal["domain", "op", "input_format", "output_format", "scope"] | str
     value: str = Field(..., min_length=1, max_length=64)
     description: str | None = None
-    
+
     @model_validator(mode="after")
     def validate_custom_key(self) -> Self:
         """Custom keys must start with x-."""
         standard_keys = {"domain", "op", "input_format", "output_format", "scope"}
         if self.key not in standard_keys and not self.key.startswith("x-"):
-            raise ValueError(
-                f"Custom capability keys must start with 'x-', got: {self.key}"
-            )
+            raise ValueError(f"Custom capability keys must start with 'x-', got: {self.key}")
         return self
 
 
 class EndpointSchema(BaseModel):
     """Endpoint input/output schema references."""
-    
+
     input: str | None = Field(None, description="Path to input JSON schema")
     output: str | None = Field(None, description="Path to output JSON schema")
 
 
 class AgentEndpoint(BaseModel):
     """Agent A2A endpoint definition."""
-    
+
     path: str = Field(
         ...,
         description="Endpoint path (must start with /a2a/)",
@@ -97,7 +93,7 @@ class AgentEndpoint(BaseModel):
     schema_: EndpointSchema | None = Field(None, alias="schema")
     timeout_seconds: int = Field(default=60, ge=1, le=600)
     auth_required: bool = True
-    
+
     @model_validator(mode="after")
     def validate_path(self) -> Self:
         """Validate path starts with /a2a/."""
@@ -108,7 +104,7 @@ class AgentEndpoint(BaseModel):
 
 class PricingRate(BaseModel):
     """Usage-based pricing rate."""
-    
+
     metric: Literal["request", "compute_minute", "token", "mb_processed"]
     amount: int = Field(ge=0, description="Credits per unit")
     description: str | None = None
@@ -116,7 +112,7 @@ class PricingRate(BaseModel):
 
 class SubscriptionTier(BaseModel):
     """Subscription pricing tier."""
-    
+
     name: str = Field(..., min_length=1, max_length=50)
     credits_per_month: int = Field(ge=0)
     price_usd: float = Field(ge=0)
@@ -124,7 +120,7 @@ class SubscriptionTier(BaseModel):
 
 class AgentPricing(BaseModel):
     """Agent pricing configuration."""
-    
+
     model: Literal["usage_based", "subscription", "free"] = "free"
     currency: Literal["CREDITS"] = "CREDITS"
     rates: list[PricingRate] = Field(default_factory=list)
@@ -133,14 +129,14 @@ class AgentPricing(BaseModel):
 
 class ExternalDependency(BaseModel):
     """External API dependency."""
-    
+
     external_api: str
     required: bool = True
 
 
 class AgentInfrastructure(BaseModel):
     """Agent infrastructure requirements."""
-    
+
     min_memory: str | None = Field(None, description="e.g., 1GB, 512MB")
     min_cpu: str | None = Field(None, description="e.g., 0.5, 2")
     network_access: bool = True
@@ -150,14 +146,14 @@ class AgentInfrastructure(BaseModel):
 
 class AgentManifest(BaseModel):
     """Complete Traylinx Agent Manifest (traylinx-agent.yaml)."""
-    
+
     manifest_version: Literal["1.0"] = "1.0"
     info: AgentInfo
     capabilities: list[AgentCapability] = Field(min_length=1)
     endpoints: list[AgentEndpoint] = Field(min_length=1)
     pricing: AgentPricing = Field(default_factory=AgentPricing)
     infrastructure: AgentInfrastructure | None = None
-    
+
     @model_validator(mode="after")
     def validate_pricing_config(self) -> Self:
         """Validate pricing configuration is consistent."""
@@ -170,16 +166,17 @@ class AgentManifest(BaseModel):
 
 def load_manifest_from_yaml(path: str) -> AgentManifest:
     """Load and validate manifest from YAML file."""
-    import yaml
     from pathlib import Path
-    
+
+    import yaml
+
     manifest_path = Path(path)
     if not manifest_path.exists():
         raise FileNotFoundError(f"Manifest not found: {path}")
-    
+
     with open(manifest_path) as f:
         data = yaml.safe_load(f)
-    
+
     return AgentManifest.model_validate(data)
 
 
@@ -187,10 +184,10 @@ def export_json_schema(output_path: str | None = None) -> dict:
     """Export AgentManifest as JSON Schema."""
     import json
     from pathlib import Path
-    
+
     schema = AgentManifest.model_json_schema()
-    
+
     if output_path:
         Path(output_path).write_text(json.dumps(schema, indent=2))
-    
+
     return schema

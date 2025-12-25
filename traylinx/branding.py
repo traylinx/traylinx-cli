@@ -53,18 +53,18 @@ LOGO_COLORS = [
 def print_logo(compact: bool = False):
     """
     Print the Traylinx logo with gradient colors.
-    
+
     Args:
         compact: If True, use the compact version of the logo
     """
     logo = TRAYLINX_LOGO_COMPACT if compact else TRAYLINX_LOGO
-    lines = [line for line in logo.split('\n') if line.strip()]
-    
+    lines = [line for line in logo.split("\n") if line.strip()]
+
     for i, line in enumerate(lines):
         # Select color based on line position
         color_index = min(i, len(LOGO_COLORS) - 1)
         color = LOGO_COLORS[color_index]
-        
+
         text = Text(line)
         text.stylize(color)
         console.print(text)
@@ -73,7 +73,7 @@ def print_logo(compact: bool = False):
 def print_welcome(email: str = None, version: str = "0.2.0"):
     """
     Print welcome message with logo after login.
-    
+
     Args:
         email: User email if available
         version: CLI version
@@ -83,10 +83,10 @@ def print_welcome(email: str = None, version: str = "0.2.0"):
     console.print()
     console.print(f"[bold]TRAYLINX[/bold] CLI v{version}", style="bold cyan")
     console.print()
-    
+
     if email:
         console.print(f"[green]Welcome, {email}![/green]")
-    
+
     console.print()
     console.print("[dim]Tips for getting started:[/dim]")
     console.print("  1. Run [cyan]traylinx orgs list[/cyan] to see your organizations")
@@ -98,7 +98,7 @@ def print_welcome(email: str = None, version: str = "0.2.0"):
 def print_status_header(version: str = "0.2.0", environment: str = "prod"):
     """
     Print status header with logo.
-    
+
     Args:
         version: CLI version
         environment: Current environment
@@ -106,7 +106,7 @@ def print_status_header(version: str = "0.2.0", environment: str = "prod"):
     console.print()
     print_logo(compact=True)
     console.print()
-    
+
     # Build styled header
     header = Text()
     header.append("TRAYLINX", style="bold cyan")
@@ -114,6 +114,6 @@ def print_status_header(version: str = "0.2.0", environment: str = "prod"):
     header.append(f"v{version}", style="dim cyan")
     header.append(" • ", style="dim")
     header.append(environment, style="bold magenta" if environment != "prod" else "bold green")
-    
+
     console.print(header)
     console.print()

@@ -4,8 +4,38 @@ import typer
 from rich.console import Console
 
 from traylinx import __version__
+from traylinx.commands import (
+    assets as assets_cmd,
+)
+from traylinx.commands import (
+    auth as auth_cmd,
+)
+from traylinx.commands import (
+    docker_cmd,
+    init,
+    open_cmd,
+    publish,
+    validate,
+)
+from traylinx.commands import (
+    help as help_cmd,
+)
+from traylinx.commands import (
+    orgs as orgs_cmd,
+)
+from traylinx.commands import (
+    plugin as plugin_cmd,
+)
+from traylinx.commands import (
+    projects as projects_cmd,
+)
+from traylinx.commands import (
+    stargate as stargate_cmd,
+)
+from traylinx.commands import (
+    status as status_cmd,
+)
 from traylinx.constants import get_settings
-
 
 # Create main app
 app = typer.Typer(
@@ -25,13 +55,14 @@ def version_callback(value: bool):
         console.print(f"[bold blue]traylinx[/bold blue] v{__version__}")
         console.print(f"[dim]Environment: {settings.env}[/dim]")
         console.print(f"[dim]Registry: {settings.effective_registry_url}[/dim]")
-        
+
         # Show installed plugins
         from traylinx.plugins import discover_plugins
+
         plugins = discover_plugins()
         if plugins:
             console.print(f"[dim]Plugins: {', '.join(plugins.keys())}[/dim]")
-        
+
         raise typer.Exit()
 
 
@@ -49,50 +80,37 @@ def main(
 ):
     """
     [bold blue]Traylinx CLI[/bold blue] - Build and publish agents to the Traylinx Network.
-    
+
     [bold]Docker-Powered Agent Commands:[/bold]
-    
+
     • [cyan]traylinx run[/cyan] - Start agent via Docker Compose
     • [cyan]traylinx stop[/cyan] - Stop running agent
     • [cyan]traylinx logs[/cyan] - View agent logs
     • [cyan]traylinx list[/cyan] - List running agents
-    
+
     [bold]Core Commands:[/bold]
-    
+
     • [cyan]traylinx init[/cyan] - Create a new agent project
     • [cyan]traylinx validate[/cyan] - Validate your manifest
     • [cyan]traylinx publish[/cyan] - Publish to the catalog
-    
+
     [bold]Plugin Commands:[/bold]
-    
+
     • [cyan]traylinx plugin list[/cyan] - Show installed plugins
     • [cyan]traylinx plugin install[/cyan] - Install a plugin
-    
+
     [bold]Configuration:[/bold]
-    
+
     Set environment variables or create ~/.traylinx/config.yaml
-    
+
     [dim]TRAYLINX_REGISTRY_URL[/dim] - API URL
     [dim]TRAYLINX_AGENT_KEY[/dim] - Your agent key
     [dim]TRAYLINX_SECRET_TOKEN[/dim] - Your secret token
-    
+
     💡 [dim]Install more features:[/dim] [cyan]traylinx plugin install stargate[/cyan]
     """
     pass
 
-
-# Import and register core commands
-from traylinx.commands import init, validate, publish
-from traylinx.commands import plugin as plugin_cmd
-from traylinx.commands import auth as auth_cmd
-from traylinx.commands import status as status_cmd
-from traylinx.commands import help as help_cmd
-from traylinx.commands import orgs as orgs_cmd
-from traylinx.commands import projects as projects_cmd
-from traylinx.commands import assets as assets_cmd
-from traylinx.commands import open_cmd
-from traylinx.commands import docker_cmd
-from traylinx.commands import stargate as stargate_cmd
 
 
 app.command(name="init")(init.init_command)
@@ -141,7 +159,7 @@ app.command(name="certify", help="Alias for 'stargate certify'")(stargate_cmd.ce
 def _load_plugins():
     """Load all discovered plugins as sub-apps."""
     from traylinx.plugins import discover_plugins
-    
+
     for name, plugin_app in discover_plugins().items():
         app.add_typer(plugin_app, name=name)
 

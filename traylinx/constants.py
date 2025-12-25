@@ -13,8 +13,6 @@ Environment Variables:
 
 import os
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # =============================================================================
 # ENVIRONMENT NAMES
@@ -29,24 +27,25 @@ ENV_PROD = "prod"
 # API ENDPOINTS
 # =============================================================================
 
+
 @dataclass(frozen=True)
 class Endpoints:
     """All API endpoints used by the CLI."""
-    
+
     # A2A Catalog Endpoints (authenticated)
     CATALOG_PUBLISH: str = "/a2a/catalog/publish"
     CATALOG_UNPUBLISH: str = "/a2a/catalog/unpublish"
     CATALOG_VERSIONS: str = "/a2a/catalog/versions"
-    
+
     # Public Catalog Endpoints (no auth)
     CATALOG_SEARCH: str = "/catalog/search"
     CATALOG_AGENT: str = "/catalog/agents/{agent_key}"
-    
+
     # Registry Endpoints
     REGISTRY_REGISTER: str = "/a2a/registry/register"
     REGISTRY_HEARTBEAT: str = "/a2a/registry/heartbeat"
     REGISTRY_DISCOVER: str = "/a2a/registry/discover"
-    
+
     # Health Endpoints
     HEALTH: str = "/health"
     READY: str = "/ready"
@@ -70,9 +69,10 @@ DEFAULT_URLS = {
 # ENVIRONMENT VARIABLE NAMES
 # =============================================================================
 
+
 class EnvVars:
     """Environment variable names."""
-    
+
     REGISTRY_URL = "TRAYLINX_REGISTRY_URL"
     AGENT_KEY = "TRAYLINX_AGENT_KEY"
     SECRET_TOKEN = "TRAYLINX_SECRET_TOKEN"
@@ -85,36 +85,39 @@ class EnvVars:
 # GLOBAL SETTINGS
 # =============================================================================
 
+
 @dataclass
 class Settings:
     """
     Global CLI settings loaded from environment variables.
-    
+
     Priority order:
     1. Environment variables
     2. Config file (~/.traylinx/config.yaml)
     3. Default values
     """
-    
+
     # Environment
     env: str = field(default_factory=lambda: os.getenv(EnvVars.ENV, ENV_DEV))
-    debug: bool = field(default_factory=lambda: os.getenv(EnvVars.DEBUG, "").lower() in ("1", "true"))
-    
+    debug: bool = field(
+        default_factory=lambda: os.getenv(EnvVars.DEBUG, "").lower() in ("1", "true")
+    )
+
     # API Configuration
-    registry_url: Optional[str] = field(default_factory=lambda: os.getenv(EnvVars.REGISTRY_URL))
-    
+    registry_url: str | None = field(default_factory=lambda: os.getenv(EnvVars.REGISTRY_URL))
+
     # Authentication
-    agent_key: Optional[str] = field(default_factory=lambda: os.getenv(EnvVars.AGENT_KEY))
-    secret_token: Optional[str] = field(default_factory=lambda: os.getenv(EnvVars.SECRET_TOKEN))
-    
+    agent_key: str | None = field(default_factory=lambda: os.getenv(EnvVars.AGENT_KEY))
+    secret_token: str | None = field(default_factory=lambda: os.getenv(EnvVars.SECRET_TOKEN))
+
     # Paths
-    config_path: Optional[str] = field(default_factory=lambda: os.getenv(EnvVars.CONFIG_PATH))
-    
+    config_path: str | None = field(default_factory=lambda: os.getenv(EnvVars.CONFIG_PATH))
+
     @property
     def effective_registry_url(self) -> str:
         """Get registry URL with fallback to environment default."""
         return self.registry_url or DEFAULT_URLS.get(self.env, DEFAULT_URLS[ENV_DEV])
-    
+
     @property
     def is_authenticated(self) -> bool:
         """Check if authentication credentials are available."""

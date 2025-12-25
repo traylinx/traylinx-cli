@@ -9,13 +9,13 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
+from traylinx.api.registry import RegistryClient, RegistryError
 from traylinx.constants import (
     MANIFEST_FILENAME,
     get_settings,
 )
 from traylinx.models.manifest import AgentManifest
-from traylinx.api.registry import RegistryClient, RegistryError
-from traylinx.utils.config import load_config, ConfigError
+from traylinx.utils.config import ConfigError, load_config
 
 console = Console()
 
@@ -41,48 +41,50 @@ def publish_command(
 ):
     """
     Publish agent to the Traylinx catalog.
-    
+
     [bold]This command:[/bold]
-    
+
     1. Validates your manifest
     2. Authenticates with the registry
     3. Uploads the manifest
     4. Makes your agent discoverable
-    
+
     [bold]Examples:[/bold]
-    
+
         traylinx publish
         traylinx publish --dry-run
         traylinx publish --registry http://localhost:8000
     """
     console.print("\n[bold blue]Publishing to Traylinx Catalog[/bold blue]\n")
-    
+
     # Step 1: Load settings
     settings = get_settings()
-    
+
     # Step 2: Load and validate manifest
     if not manifest_path.exists():
         console.print(f"[bold red]Error:[/bold red] Manifest not found: {manifest_path}")
-        raise typer.Exit(1)
-    
+        raise typer.Exit(1) from None
+
     try:
         with open(manifest_path) as f:
             data = yaml.safe_load(f)
         manifest = AgentManifest.model_validate(data)
     except yaml.YAMLError as e:
         console.print(f"[bold red]YAML Error:[/bold red] {e}")
-        raise typer.Exit(1)
-    except ValidationError as e:
+        raise typer.Exit(1) from None
+    except ValidationError:
         console.print("[bold red]Validation Failed[/bold red]")
         console.print("Run [bold]traylinx validate[/bold] for details")
-        raise typer.Exit(1)
-    
-    console.print(f"[green]✓[/green] Manifest valid: [bold]{manifest.info.name}[/bold] v{manifest.info.version}")
-    
+        raise typer.Exit(1) from None
+
+    console.print(
+        f"[green]✓[/green] Manifest valid: [bold]{manifest.info.name}[/bold] v{manifest.info.version}"
+    )
+
     # Step 3: Get credentials
     agent_key = settings.agent_key
     secret_token = settings.secret_token
-    
+
     # Try config file if env vars not set
     if not agent_key or not secret_token:
         try:
@@ -91,19 +93,19 @@ def publish_command(
             secret_token = secret_token or config.credentials.secret_token
         except ConfigError:
             pass
-    
+
     if not agent_key or not secret_token:
         console.print("[bold red]Error:[/bold red] Missing credentials")
         console.print("\nSet environment variables:")
         console.print("  export TRAYLINX_AGENT_KEY=your-agent-key")
         console.print("  export TRAYLINX_SECRET_TOKEN=your-secret-token")
         console.print("\nOr create ~/.traylinx/config.yaml")
-        raise typer.Exit(1)
-    
+        raise typer.Exit(1) from None
+
     # Step 4: Determine registry URL
     url = registry_url or settings.effective_registry_url
     console.print(f"[green]✓[/green] Registry: {url}")
-    
+
     # Step 5: Dry run check
     if dry_run:
         console.print(
@@ -118,7 +120,7 @@ def publish_command(
             )
         )
         return
-    
+
     # Step 6: Publish
     with Progress(
         SpinnerColumn(),
@@ -126,25 +128,25 @@ def publish_command(
         console=console,
     ) as progress:
         task = progress.add_task("Publishing...", total=None)
-        
+
         client = RegistryClient(
             base_url=url,
             agent_key=agent_key,
             secret_token=secret_token,
         )
-        
+
         try:
-            result = client.publish(manifest)
+            client.publish(manifest)
             progress.update(task, completed=True)
         except RegistryError as e:
             progress.stop()
             console.print(f"\n[bold red]Publish Failed:[/bold red] {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
         except Exception as e:
             progress.stop()
             console.print(f"\n[bold red]Error:[/bold red] {e}")
-            raise typer.Exit(1)
-    
+            raise typer.Exit(1) from None
+
     # Success!
     console.print(
         Panel(

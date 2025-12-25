@@ -10,10 +10,6 @@ Provides user-friendly documentation with:
 
 import typer
 from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.text import Text
-from typing import Optional
 
 from traylinx.branding import print_logo
 
@@ -169,14 +165,12 @@ Publish your agent to the Traylinx catalog.
 }
 
 
-def help_command(
-    topic: Optional[str] = typer.Argument(None, help="Topic to get help on")
-):
+def help_command(topic: str | None = typer.Argument(None, help="Topic to get help on")):
     """
     Show help and documentation.
-    
+
     Run without arguments for an overview, or specify a topic:
-    
+
         traylinx help login
         traylinx help orgs
         traylinx help projects
@@ -194,28 +188,28 @@ def help_command(
                 console.print(f"  • {t}")
             console.print("\nOr run [cyan]traylinx help[/cyan] for full overview.")
         return
-    
+
     # Show full help
     console.print()
     print_logo(compact=True)
     console.print()
-    
+
     # Tagline
     console.print("[bold]TRAYLINX CLI[/bold] - Build and deploy AI agents\n")
-    
+
     # Quick start
     console.print(QUICK_START)
     console.print()
-    
+
     # Commands by category
     console.print("[bold]Commands[/bold]\n")
-    
+
     for category, commands in COMMANDS.items():
         console.print(f"  [bold dim]{category}[/bold dim]")
         for cmd, desc in commands:
             console.print(f"    [cyan]traylinx {cmd:<28}[/cyan] {desc}")
         console.print()
-    
+
     # Footer
     console.print("[dim]For more on a command: traylinx help <topic>[/dim]")
     console.print("[dim]Report issues: https://github.com/traylinx/traylinx-cli[/dim]")

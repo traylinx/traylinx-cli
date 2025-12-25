@@ -35,17 +35,17 @@ def validate_command(
 ):
     """
     Validate traylinx-agent.yaml manifest.
-    
+
     [bold]Checks:[/bold]
-    
+
     • YAML syntax
     • Required fields
     • Field formats (semver, URLs, etc.)
     • Capability taxonomy
     • Pricing configuration
-    
+
     [bold]Examples:[/bold]
-    
+
         traylinx validate
         traylinx validate --manifest custom.yaml
         traylinx validate --strict
@@ -53,58 +53,58 @@ def validate_command(
     # Check file exists
     if not manifest_path.exists():
         console.print(f"[bold red]Error:[/bold red] Manifest not found: {manifest_path}")
-        console.print(f"\nCreate one with: [bold]traylinx init my-agent[/bold]")
-        raise typer.Exit(1)
-    
+        console.print("\nCreate one with: [bold]traylinx init my-agent[/bold]")
+        raise typer.Exit(1) from None
+
     if not quiet:
         console.print(f"\n[bold blue]Validating:[/bold blue] {manifest_path}\n")
-    
+
     # Load YAML
     try:
         with open(manifest_path) as f:
             data = yaml.safe_load(f)
     except yaml.YAMLError as e:
         console.print(f"[bold red]YAML Error:[/bold red] {e}")
-        raise typer.Exit(1)
-    
+        raise typer.Exit(1) from None
+
     if data is None:
         console.print("[bold red]Error:[/bold red] Manifest is empty")
-        raise typer.Exit(1)
-    
+        raise typer.Exit(1) from None
+
     # Validate with Pydantic
     try:
         manifest = AgentManifest.model_validate(data)
     except ValidationError as e:
         console.print("[bold red]Validation Failed[/bold red]\n")
-        
+
         # Create error table
         table = Table(show_header=True)
         table.add_column("Field", style="cyan")
         table.add_column("Error", style="red")
-        
+
         for error in e.errors():
             field = ".".join(str(p) for p in error["loc"])
             table.add_row(field, error["msg"])
-        
+
         console.print(table)
         console.print(f"\n[dim]Total errors: {len(e.errors())}[/dim]")
-        raise typer.Exit(1)
-    
+        raise typer.Exit(1) from None
+
     # Validation passed - show summary
     if not quiet:
         _print_summary(manifest)
-    
+
     console.print("[bold green]✓ Manifest is valid![/bold green]")
 
 
 def _print_summary(manifest: AgentManifest):
     """Print manifest summary."""
     info = manifest.info
-    
+
     table = Table(show_header=False, box=None)
     table.add_column("Field", style="dim")
     table.add_column("Value", style="bold")
-    
+
     table.add_row("Name", info.name)
     table.add_row("Display Name", info.display_name)
     table.add_row("Version", info.version)
@@ -112,6 +112,6 @@ def _print_summary(manifest: AgentManifest):
     table.add_row("Capabilities", str(len(manifest.capabilities)))
     table.add_row("Endpoints", str(len(manifest.endpoints)))
     table.add_row("Pricing", manifest.pricing.model)
-    
+
     console.print(table)
     console.print()

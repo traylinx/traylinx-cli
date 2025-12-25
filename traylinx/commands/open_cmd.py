@@ -4,8 +4,8 @@ Traylinx CLI - Open Command.
 Opens the Traylinx platform in the default browser.
 """
 
-import typer
 import webbrowser
+
 from rich.console import Console
 
 console = Console()

@@ -5,7 +5,7 @@
 
   The command-line interface for the **Traylinx Agent Network**. Build, run, and share AI agents with Docker-powered simplicity.
 
-  **Version:** 0.2.0 | **Python:** 3.11+ | **Status:** Production-Ready
+  **Version:** 0.2.1 | **Python:** 3.11+ | **Status:** Production-Ready
 
   [![Status](https://img.shields.io/badge/status-production--ready-success)](https://github.com/traylinx/traylinx-cli)
   [![PyPI](https://img.shields.io/pypi/v/traylinx-cli)](https://pypi.org/project/traylinx-cli/)
@@ -24,6 +24,14 @@
 ---
 
 ## Installation
+
+### Instant Execution (No Install)
+
+Run without installing using [`uvx`](https://github.com/astral-sh/uv):
+
+```bash
+uvx traylinx-cli --help
+```
 
 ### Using pipx (Recommended)
 
@@ -45,6 +53,12 @@ brew install traylinx
 ```bash
 pip install traylinx-cli
 ```
+
+> **💡 Short Alias**: After installation, you can use `tx` as a shortcut:
+> ```bash
+> tx --help    # Same as traylinx --help
+> tx run       # Same as traylinx run
+> ```
 
 ## Quick Start
 

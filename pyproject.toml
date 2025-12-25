@@ -31,6 +31,7 @@ dependencies = [
 
 [project.scripts]
 traylinx = "traylinx.cli:app"
+tx = "traylinx.cli:app"
 
 [project.urls]
 Homepage = "https://traylinx.com"

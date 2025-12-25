@@ -144,7 +144,7 @@ class TestAgentManifest:
                 author=AuthorInfo(name="Test Author"),
             ),
             capabilities=[AgentCapability(key="domain", value="general")],
-            endpoints=[AgentEndpoint(path="/a2a/run", method="POST", description="Run")],
+            endpoints=[AgentEndpoint(path="/a2a/run", method="POST", description="Run the agent")],
             pricing=AgentPricing(model="free"),
         )
         assert manifest.pricing.model == "free"
@@ -161,7 +161,7 @@ class TestAgentManifest:
                     author=AuthorInfo(name="Test Author"),
                 ),
                 capabilities=[AgentCapability(key="domain", value="general")],
-                endpoints=[AgentEndpoint(path="/a2a/run", method="POST", description="Run")],
+                endpoints=[AgentEndpoint(path="/a2a/run", method="POST", description="Run the agent")],
                 pricing=AgentPricing(model="usage_based", rates=[]),
             )
         assert "rate" in str(exc.value).lower()

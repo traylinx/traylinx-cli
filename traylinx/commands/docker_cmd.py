@@ -16,6 +16,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from traylinx.security import PolicyEngine, PolicyDecision
 from traylinx.utils.docker import (
     check_docker,
     find_compose_file,
@@ -384,6 +385,9 @@ def _run_native(project_dir: Path):
     console.print(f"[dim]Project:[/dim] {project_dir.name}")
     console.print()
 
+    # Initialize PolicyEngine for security checks
+    policy = PolicyEngine(project_dir, interactive=True)
+
     # Check for pyproject.toml or requirements.txt
     project_dir / "pyproject.toml"
     project_dir / "requirements.txt"
@@ -409,7 +413,14 @@ def _run_native(project_dir: Path):
             console.print(f"  - {c.relative_to(project_dir)}")
         raise typer.Exit(1) from None
 
+    # Security: Validate main file path
+    result = policy.check_file_operation("execute", main_file)
+    if result.decision == PolicyDecision.DENY:
+        console.print(f"[red]Security Error:[/red] {result.reason}")
+        raise typer.Exit(1) from None
+
     console.print(f"[dim]Entry point:[/dim] {main_file.relative_to(project_dir)}")
+    console.print("[dim]Security:[/dim] [green]✓ PolicyEngine validated[/green]")
     console.print()
 
     # Inject environment variables
@@ -639,6 +650,25 @@ def pull_command(
     console.print(f"[dim]Agent:[/dim] {agent_name}")
     console.print(f"[dim]Image:[/dim] {image_tag}")
     console.print()
+
+    # Security: Verify image source
+    policy = PolicyEngine(Path.cwd(), interactive=True)
+    security_result = policy.check_docker_pull(image_tag)
+    
+    if security_result.decision == PolicyDecision.DENY:
+        console.print(f"[red]Security Error:[/red] {security_result.reason}")
+        if security_result.suggestions:
+            console.print("[dim]Suggestions:[/dim]")
+            for s in security_result.suggestions:
+                console.print(f"  • {s}")
+        raise typer.Exit(1) from None
+    elif security_result.decision == PolicyDecision.ASK_USER:
+        console.print(f"[yellow]⚠ Security Warning:[/yellow] {security_result.reason}")
+        if not typer.confirm("Continue with untrusted image?"):
+            raise typer.Exit(0)
+        console.print()
+    else:
+        console.print("[dim]Security:[/dim] [green]✓ Trusted registry[/green]")
 
     # Check Docker
     docker_info = check_docker()

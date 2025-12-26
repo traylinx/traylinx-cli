@@ -165,18 +165,72 @@ class ChatScreen(Screen):
         # Clear input
         event.input.value = ""
 
+        # Resolve @path mentions
+        resolved_message, embedded_files = self._resolve_path_mentions(message)
+
         # Add user message to log
         chat_log = self.query_one("#chat-log", RichLog)
         time_str = datetime.now().strftime("%H:%M")
         chat_log.write(f"[dim]{time_str}[/dim] [bold cyan]You:[/bold cyan]")
         chat_log.write(f"  {message}")
+
+        # Show embedded files if any
+        if embedded_files:
+            chat_log.write(f"  [dim]📎 Embedded {len(embedded_files)} file(s): {', '.join(embedded_files)}[/dim]")
+
         chat_log.write("")
 
-        # Store message
-        self.messages.append({"role": "user", "content": message})
+        # Store message with resolved content
+        self.messages.append({"role": "user", "content": resolved_message})
 
         # Simulate assistant response (placeholder for actual agent integration)
-        await self._send_to_agent(message, chat_log)
+        await self._send_to_agent(resolved_message, chat_log)
+
+    def _resolve_path_mentions(self, message: str) -> tuple[str, list[str]]:
+        """Resolve @path mentions to embed file contents.
+
+        Supports @file.ext and @path/to/file.ext syntax.
+
+        Args:
+            message: The raw user message
+
+        Returns:
+            Tuple of (resolved message with file contents, list of embedded filenames)
+        """
+        import re
+
+        embedded_files = []
+        resolved = message
+
+        # Match @path patterns (alphanumeric, dots, slashes, underscores, hyphens)
+        pattern = r'@([\w./\-]+\.\w+)'
+        matches = re.findall(pattern, message)
+
+        for match in matches:
+            # Resolve relative to project directory
+            file_path = self.project_dir / match
+            if not file_path.exists():
+                # Try as absolute path
+                file_path = Path(match)
+
+            if file_path.exists() and file_path.is_file():
+                try:
+                    # Limit file size (max 50KB)
+                    if file_path.stat().st_size > 50 * 1024:
+                        content = f"[File too large: {file_path.name}]"
+                    else:
+                        content = file_path.read_text()
+
+                    # Replace @mention with content block
+                    embed_block = f"\n\n--- {file_path.name} ---\n{content}\n--- end {file_path.name} ---\n"
+                    resolved = resolved.replace(f"@{match}", embed_block)
+                    embedded_files.append(file_path.name)
+                except Exception:
+                    # Silently skip unreadable files
+                    pass
+
+        return resolved, embedded_files
+
 
     async def _send_to_agent(self, message: str, chat_log: RichLog) -> None:
         """Send message to agent and stream response.

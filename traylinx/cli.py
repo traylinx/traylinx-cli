@@ -150,6 +150,9 @@ app.command(name="pull")(docker_cmd.pull_command)
 app.add_typer(stargate_cmd.app, name="stargate")
 
 # Top-level aliases for common Stargate commands (Phase 2)
+app.command(name="connect", help="Connect to Stargate P2P network")(stargate_cmd.connect_command)
+app.command(name="disconnect", help="Disconnect from Stargate network")(stargate_cmd.disconnect_command)
+app.command(name="network", help="Show Stargate network status")(stargate_cmd.status_command)
 app.command(name="discover", help="Alias for 'stargate peers'")(stargate_cmd.peers_command)
 app.command(name="call", help="Alias for 'stargate call'")(stargate_cmd.call_command)
 app.command(name="certify", help="Alias for 'stargate certify'")(stargate_cmd.certify_command)
@@ -162,6 +165,15 @@ app.command(name="dashboard", help="📊 Agent status dashboard")(chat_cmd.dashb
 # Register MCP commands (Phase 4)
 from traylinx.commands import mcp_cmd
 app.add_typer(mcp_cmd.mcp_app, name="mcp")
+
+# Register Cortex commands (Phase 5)
+from traylinx.commands import cortex_cmd
+app.add_typer(cortex_cmd.app, name="cortex")
+
+# Register Sessions commands (Phase 5)
+from traylinx.commands import sessions_cmd
+app.add_typer(sessions_cmd.app, name="sessions")
+
 
 
 # Load plugins at import time so they're available for command matching

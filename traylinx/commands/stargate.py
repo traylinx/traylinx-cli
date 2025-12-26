@@ -2,13 +2,19 @@
 
 This module provides commands for interacting with the Stargate P2P network:
 - Identity management (generate, certify)
+- Network connectivity (connect, disconnect, status)
 - Peer discovery
 - Direct agent calls
 """
 
+import asyncio
+import json
+from pathlib import Path
+
 import typer
 from rich.console import Console
 from rich.table import Table
+from rich.panel import Panel
 
 console = Console()
 
@@ -17,6 +23,176 @@ app = typer.Typer(
     help="Stargate P2P network commands",
     no_args_is_help=True,
 )
+
+# --- Connectivity Commands (Phase 2) ---
+
+
+@app.command(name="connect")
+def connect_command(
+    transport: str = typer.Option(
+        "nats",
+        "--transport",
+        "-t",
+        help="Transport type: 'nats' (default) or 'libp2p'",
+    ),
+    server: str = typer.Option(
+        None,
+        "--server",
+        "-s",
+        help="Server URL (defaults to demo.nats.io for NATS)",
+    ),
+    name: str = typer.Option(
+        None,
+        "--name",
+        "-n",
+        help="Display name for this node",
+    ),
+    background: bool = typer.Option(
+        False,
+        "--background",
+        "-b",
+        help="Run in background mode (daemon)",
+    ),
+):
+    """Connect to the Stargate P2P network.
+
+    Starts a local Stargate node and connects to the network using the
+    specified transport (NATS or libp2p).
+
+    Examples:
+        traylinx connect                   # Use defaults
+        traylinx connect -t libp2p         # Use P2P transport
+        traylinx connect -s nats://my.server:4222
+    """
+    try:
+        from traylinx_stargate.node import StarGateNode, set_node
+    except ImportError:
+        console.print(
+            "[red]Error:[/red] traylinx-stargate not installed. Run: pip install traylinx-stargate"
+        )
+        raise typer.Exit(1) from None
+
+    # Create node
+    node = StarGateNode(
+        display_name=name or "CLI-Node",
+        transport=transport,
+        server=server,
+    )
+
+    with console.status(f"Connecting via {transport.upper()}..."):
+        try:
+            asyncio.run(node.start(server=server))
+            set_node(node)  # Store globally for other commands
+        except Exception as e:
+            console.print(f"[red]Connection failed:[/red] {e}")
+            raise typer.Exit(1) from None
+
+    status = node.get_status()
+    console.print("[green]✓[/green] Connected to Stargate Network!")
+    console.print(f"  [dim]Peer ID:[/dim] {status['peer_id']}")
+    console.print(f"  [dim]Transport:[/dim] {status['transport']}")
+    console.print(f"  [dim]Server:[/dim] {status['server']}")
+
+    if not background:
+        console.print("\n[dim]Press Ctrl+C to disconnect...[/dim]")
+        try:
+            # H1 fix: Use modern asyncio pattern instead of deprecated get_event_loop()
+            async def wait_forever():
+                await asyncio.Event().wait()
+            asyncio.run(wait_forever())
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Disconnecting...[/yellow]")
+            asyncio.run(node.stop())
+            console.print("[green]✓[/green] Disconnected.")
+
+
+@app.command(name="disconnect")
+def disconnect_command():
+    """Disconnect from the Stargate network.
+
+    Stops the local Stargate node if running.
+    """
+    try:
+        from traylinx_stargate.node import get_node
+    except ImportError:
+        console.print(
+            "[red]Error:[/red] traylinx-stargate not installed."
+        )
+        raise typer.Exit(1) from None
+
+    node = get_node()
+    if not node or not node.is_running:
+        console.print("[yellow]No active connection.[/yellow]")
+        raise typer.Exit(0)
+
+    asyncio.run(node.stop())
+    console.print("[green]✓[/green] Disconnected from Stargate Network.")
+
+
+@app.command(name="status")
+def status_command():
+    """Show Stargate network status.
+
+    Displays the current connection state, transport info, and known peers.
+    """
+    try:
+        from traylinx_stargate.node import get_node
+        from traylinx_stargate.identity import IdentityManager
+    except ImportError:
+        console.print(
+            "[red]Error:[/red] traylinx-stargate not installed."
+        )
+        raise typer.Exit(1) from None
+
+    identity = IdentityManager()
+    node = get_node()
+
+    # Build status table
+    table = Table(title="Stargate Network Status", show_header=False)
+    table.add_column("Property", style="cyan", width=20)
+    table.add_column("Value")
+
+    # Identity info
+    if identity.has_identity():
+        identity.load_keypair()
+        table.add_row("Peer ID", identity.get_peer_id())
+        cert_status = "[green]✓ Certified[/green]" if identity.has_certificate() else "[yellow]Not certified[/yellow]"
+        table.add_row("Certificate", cert_status)
+    else:
+        table.add_row("Identity", "[red]Not found[/red]")
+
+    # Connection info
+    if node and node.is_running:
+        status = node.get_status()
+        transport_info = status.get("transport", {})
+        table.add_row("Connection", "[green]● Connected[/green]")
+        table.add_row("Transport", transport_info.get("transport", "nats") if isinstance(transport_info, dict) else str(transport_info))
+        table.add_row("Server", transport_info.get("server", "unknown") if isinstance(transport_info, dict) else "unknown")
+        table.add_row("Peers Known", str(len(node.get_peers())))
+        
+        # NAT status (Phase 6)
+        nat_status = status.get("nat_status")
+        if nat_status:
+            nat_type = nat_status.get("nat_type", "unknown")
+            if nat_type == "public":
+                table.add_row("NAT Status", "[green]Public IP[/green]")
+            elif nat_type == "nat":
+                table.add_row("NAT Status", "[yellow]Behind NAT[/yellow]")
+            elif nat_type == "nats_native":
+                table.add_row("NAT Status", "[dim]NATS (no NAT issue)[/dim]")
+            else:
+                table.add_row("NAT Status", f"[dim]{nat_type}[/dim]")
+        
+        # Relay info
+        if status.get("relay_enabled"):
+            table.add_row("Relay Mode", "[green]● Enabled[/green]")
+        else:
+            table.add_row("Relay Mode", "[dim]Disabled[/dim]")
+    else:
+        table.add_row("Connection", "[dim]● Offline[/dim]")
+
+    console.print(table)
+
 
 
 @app.command(name="identity")
@@ -158,9 +334,40 @@ def peers_command(
     Shows all peers that have announced themselves on the Stargate network.
     Use --capability to filter by specific agent capabilities.
     """
-    console.print("[yellow]Peer discovery requires a running Stargate node.[/yellow]")
-    console.print("This command is a placeholder for the full implementation.")
-    console.print("\n[dim]Coming in Phase 3: Global Connectivity[/dim]")
+    try:
+        from traylinx_stargate.node import get_node
+    except ImportError:
+        console.print("[red]Error:[/red] traylinx-stargate not installed.")
+        raise typer.Exit(1) from None
+
+    node = get_node()
+    if not node or not node.is_running:
+        console.print("[yellow]No active connection.[/yellow]")
+        console.print("Run [cyan]traylinx connect[/cyan] first.")
+        raise typer.Exit(1) from None
+
+    with console.status("Discovering peers..."):
+        peers = asyncio.run(node.discover(capability=capability))
+
+    if json_output:
+        console.print(json.dumps([p.__dict__ for p in peers], indent=2))
+        return
+
+    if not peers:
+        console.print("[dim]No peers found.[/dim]")
+        return
+
+    table = Table(title="Stargate Peers")
+    table.add_column("Peer ID", style="cyan")
+    table.add_column("Name")
+    table.add_column("Capabilities")
+
+    for peer in peers:
+        caps = ", ".join(peer.capabilities) if peer.capabilities else "-"
+        table.add_row(peer.peer_id[:16] + "...", peer.display_name or "-", caps)
+
+    console.print(table)
+
 
 
 @app.command(name="call")
@@ -176,11 +383,102 @@ def call_command(
     The agent must be online and discoverable on the Stargate network.
 
     Example:
-        traylinx stargate call translator-abc123 translate -p '{"text": "Hello"}'
+        traylinx call translator-abc123 translate -p '{"text": "Hello"}'
     """
-    console.print("[yellow]Direct P2P calls require a running Stargate node.[/yellow]")
-    console.print("This command is a placeholder for the full implementation.")
-    console.print("\n[dim]Coming in Phase 3: Global Connectivity[/dim]")
+    try:
+        from traylinx_stargate.node import get_node
+    except ImportError:
+        console.print("[red]Error:[/red] traylinx-stargate not installed.")
+        raise typer.Exit(1) from None
+
+    node = get_node()
+    if not node or not node.is_running:
+        console.print("[yellow]No active connection.[/yellow]")
+        console.print("Run [cyan]traylinx connect[/cyan] first.")
+        raise typer.Exit(1) from None
+
+    try:
+        payload_dict = json.loads(payload)
+    except json.JSONDecodeError as e:
+        console.print(f"[red]Invalid JSON payload:[/red] {e}")
+        raise typer.Exit(1) from None
+
+    with console.status(f"Calling {action} on {peer_id[:16]}..."):
+        try:
+            result = asyncio.run(node.call(peer_id, action, payload_dict, timeout=timeout))
+        except Exception as e:
+            console.print(f"[red]Call failed:[/red] {e}")
+            raise typer.Exit(1) from None
+
+    console.print("[green]✓[/green] Response received:")
+    console.print(json.dumps(result, indent=2))
+
+
+@app.command(name="announce")
+def announce_command():
+    """Announce your presence to the Stargate network.
+
+    Broadcasts your identity, display name, and capabilities so other agents
+    can discover you.
+    """
+    try:
+        from traylinx_stargate.node import get_node
+    except ImportError:
+        console.print("[red]Error:[/red] traylinx-stargate not installed.")
+        raise typer.Exit(1) from None
+
+    node = get_node()
+    if not node or not node.is_running:
+        console.print("[yellow]No active connection.[/yellow]")
+        console.print("Run [cyan]traylinx connect[/cyan] first.")
+        raise typer.Exit(1) from None
+
+    with console.status("Announcing to network..."):
+        asyncio.run(node.announce())
+
+    console.print("[green]✓[/green] Announcement broadcast!")
+    console.print(f"  [dim]Peer ID:[/dim] {node.peer_id}")
+
+
+@app.command(name="listen")
+def listen_command():
+    """Listen for incoming messages (debug mode).
+
+    Displays all incoming A2A messages in real-time. Useful for debugging.
+    Press Ctrl+C to stop.
+    """
+    try:
+        from traylinx_stargate.node import get_node
+    except ImportError:
+        console.print("[red]Error:[/red] traylinx-stargate not installed.")
+        raise typer.Exit(1) from None
+
+    node = get_node()
+    if not node or not node.is_running:
+        console.print("[yellow]No active connection.[/yellow]")
+        console.print("Run [cyan]traylinx connect[/cyan] first.")
+        raise typer.Exit(1) from None
+
+    console.print("[cyan]Listening for incoming messages...[/cyan]")
+    console.print("[dim]Press Ctrl+C to stop.[/dim]\n")
+
+    # Register a catch-all handler for debug
+    @node.on_message("*")
+    async def debug_handler(msg):
+        console.print(Panel(
+            json.dumps(msg, indent=2),
+            title=f"[bold]Incoming: {msg.get('action', 'unknown')}[/bold]",
+            border_style="cyan"
+        ))
+        return None  # Don't respond
+
+    try:
+        # H1 fix: Use modern asyncio pattern instead of deprecated get_event_loop()
+        async def wait_forever():
+            await asyncio.Event().wait()
+        asyncio.run(wait_forever())
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Stopped listening.[/yellow]")
 
 
 # Standalone commands for top-level aliases
@@ -192,3 +490,4 @@ def discover_command(
     Alias for: traylinx stargate peers
     """
     peers_command(capability=capability, json_output=False)
+

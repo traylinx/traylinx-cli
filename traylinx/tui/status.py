@@ -204,7 +204,75 @@ class StatusScreen(Screen):
         # Placeholder for actual Docker integration
         return []
 
+    def _check_stargate(self) -> tuple[str, str]:
+        """Check Stargate P2P status.
+
+        Returns:
+            Tuple of (display text, status class)
+        """
+        try:
+            from traylinx_stargate.identity import IdentityManager
+            from traylinx_stargate.node import get_node
+
+            identity = IdentityManager()
+
+            if not identity.has_identity():
+                return "[yellow]○[/yellow] no identity", "warning"
+
+            node = get_node()
+            if node and node.is_running:
+                return "[green]●[/green] connected", "ok"
+            elif identity.has_certificate():
+                return "[cyan]○[/cyan] certified", "ok"
+            else:
+                return "[yellow]○[/yellow] uncertified", "warning"
+        except ImportError:
+            return "[dim]○[/dim] not installed", "warning"
+        except Exception:
+            return "[red]✗[/red] error", "error"
+
+    def _check_cortex(self) -> tuple[str, str]:
+        """Check Cortex connection status.
+
+        Returns:
+            Tuple of (display text, status class)
+        """
+        try:
+            from traylinx.commands.cortex_cmd import load_cortex_config
+
+            config = load_cortex_config()
+            if not config.get("url"):
+                return "[dim]○[/dim] not configured", "warning"
+            elif config.get("enabled"):
+                return "[green]●[/green] enabled", "ok"
+            else:
+                return "[yellow]○[/yellow] disabled", "warning"
+        except ImportError:
+            return "[dim]○[/dim] unavailable", "warning"
+        except Exception:
+            return "[red]✗[/red] error", "error"
+
     def action_refresh(self) -> None:
         """Refresh the status display."""
         self.notify("Refreshing status...")
         self._update_status()
+        self._update_panels()
+
+    def _update_panels(self) -> None:
+        """Update the metric panels with live data."""
+        panels = self.query(".status-panel")
+        panel_list = list(panels)
+
+        if len(panel_list) >= 3:
+            # Update Stargate panel (index 2)
+            stargate_text, _ = self._check_stargate()
+            panel_list[2].update(f"[bold]Stargate[/bold]\n{stargate_text}")
+
+        if len(panel_list) >= 4:
+            # Add Cortex panel info
+            cortex_text, _ = self._check_cortex()
+            # Update Context panel to show Cortex
+            context_status = self._check_context()
+            if context_status:
+                panel_list[3].update(f"[bold]Cortex[/bold]\n{cortex_text}")
+

@@ -7,8 +7,11 @@
 
   **Version:** 0.2.1 | **Python:** 3.11+ | **Status:** Production-Ready
 
-  [![Status](https://img.shields.io/badge/status-production--ready-success)](https://github.com/traylinx/traylinx-cli)
+  [![CI](https://github.com/traylinx/traylinx-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/traylinx/traylinx-cli/actions)
   [![PyPI](https://img.shields.io/pypi/v/traylinx-cli)](https://pypi.org/project/traylinx-cli/)
+  [![Homebrew](https://img.shields.io/badge/homebrew-traylinx-8800ff)](https://github.com/traylinx/homebrew-traylinx)
+  [![Downloads](https://img.shields.io/pypi/dm/traylinx-cli)](https://pypi.org/project/traylinx-cli/)
+  [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 </div>
 
 ---
@@ -25,20 +28,18 @@
 
 ## Installation
 
-### Instant Execution (No Install)
+### One-Line Install (Recommended)
 
-Run without installing using [`uvx`](https://github.com/astral-sh/uv):
+Install instantly on macOS or Linux:
 
 ```bash
-uvx traylinx-cli --help
+curl -sSL https://get.traylinx.com/install.sh | sh
 ```
 
-### Using pipx (Recommended)
-
-[pipx](https://pipx.pypa.io/) installs CLI tools in isolated environments:
+Or install a specific version:
 
 ```bash
-pipx install traylinx-cli
+curl -sSL https://get.traylinx.com/install.sh | sh -s -- -v 0.2.1
 ```
 
 ### Using Homebrew (macOS/Linux)
@@ -48,10 +49,33 @@ brew tap traylinx/traylinx
 brew install traylinx
 ```
 
+### Using Scoop (Windows)
+
+```powershell
+scoop bucket add traylinx https://github.com/traylinx/scoop-traylinx
+scoop install traylinx
+```
+
+### Using pipx
+
+[pipx](https://pipx.pypa.io/) installs CLI tools in isolated environments:
+
+```bash
+pipx install traylinx-cli
+```
+
 ### Using pip
 
 ```bash
 pip install traylinx-cli
+```
+
+### Instant Execution (No Install)
+
+Run without installing using [`uvx`](https://github.com/astral-sh/uv):
+
+```bash
+uvx traylinx-cli --help
 ```
 
 > **💡 Short Alias**: After installation, you can use `tx` as a shortcut:

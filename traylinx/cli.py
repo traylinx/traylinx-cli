@@ -159,6 +159,10 @@ from traylinx.commands import chat_cmd
 app.command(name="chat", help="🗣️ Interactive chat with agent")(chat_cmd.chat_command)
 app.command(name="dashboard", help="📊 Agent status dashboard")(chat_cmd.dashboard_command)
 
+# Register MCP commands (Phase 4)
+from traylinx.commands import mcp_cmd
+app.add_typer(mcp_cmd.mcp_app, name="mcp")
+
 
 # Load plugins at import time so they're available for command matching
 def _load_plugins():

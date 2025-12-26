@@ -154,6 +154,11 @@ app.command(name="discover", help="Alias for 'stargate peers'")(stargate_cmd.pee
 app.command(name="call", help="Alias for 'stargate call'")(stargate_cmd.call_command)
 app.command(name="certify", help="Alias for 'stargate certify'")(stargate_cmd.certify_command)
 
+# Register TUI commands (Phase 3)
+from traylinx.commands import chat_cmd
+app.command(name="chat", help="🗣️ Interactive chat with agent")(chat_cmd.chat_command)
+app.command(name="dashboard", help="📊 Agent status dashboard")(chat_cmd.dashboard_command)
+
 
 # Load plugins at import time so they're available for command matching
 def _load_plugins():

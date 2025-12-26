@@ -27,6 +27,7 @@ dependencies = [
     "rich>=13.0.0",
     "email-validator>=2.0.0",
     "inquirerpy>=0.3.4",
+    "textual>=0.52.0",
 ]
 
 [project.scripts]

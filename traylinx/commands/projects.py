@@ -23,7 +23,7 @@ from traylinx.context import ContextManager
 
 # API Configuration
 METRICS_API_URL = os.environ.get(
-    "TRAYLINX_METRICS_URL", "https://api.makakoo.com/ma-metrics-wsp-ms/v1/api"
+    "TRAYLINX_METRICS_URL", "https://platform.traylinx.com"
 )
 
 app = typer.Typer(help="Manage projects", invoke_without_command=True, no_args_is_help=False)

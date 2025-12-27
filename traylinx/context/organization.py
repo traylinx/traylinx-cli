@@ -25,7 +25,7 @@ from traylinx.auth import AuthManager
 # Constants
 CONTEXT_FILE = Path.home() / ".traylinx" / "context.json"
 METRICS_API_URL = os.environ.get(
-    "TRAYLINX_METRICS_URL", "https://api.makakoo.com/ma-metrics-wsp-ms/v1/api"
+    "TRAYLINX_METRICS_URL", "https://platform.traylinx.com"
 )
 
 console = Console()

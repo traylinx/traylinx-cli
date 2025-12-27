@@ -21,11 +21,11 @@ from traylinx.context import ContextManager
 
 # API Configuration
 METRICS_API_URL = os.environ.get(
-    "TRAYLINX_METRICS_URL", "https://api.makakoo.com/ma-metrics-wsp-ms/v1/api"
+    "TRAYLINX_METRICS_URL", "https://platform.traylinx.com"
 )
 
 # Users API URL (for creating agent users with OAuth credentials)
-USERS_API_URL = os.environ.get("TRAYLINX_USERS_URL", "https://api.makakoo.com/ma-users-ms/v1/api")
+USERS_API_URL = os.environ.get("TRAYLINX_USERS_URL", "https://sentinel.traylinx.com")
 
 # Credentials storage directory
 CREDENTIALS_DIR = Path.home() / ".traylinx" / "credentials"

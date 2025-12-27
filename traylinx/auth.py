@@ -23,7 +23,7 @@ from rich.console import Console
 # Constants
 CREDENTIALS_FILE = Path.home() / ".traylinx" / "credentials.json"
 SENTINEL_URL = os.environ.get(
-    "TRAYLINX_AUTH_URL", "https://api.makakoo.com/ma-authentication-ms/v1/api"
+    "TRAYLINX_AUTH_URL", "https://sentinel.traylinx.com"
 )
 POLL_INTERVAL = 2  # seconds
 POLL_TIMEOUT = 600  # 10 minutes

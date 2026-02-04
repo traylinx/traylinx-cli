@@ -174,6 +174,10 @@ app.add_typer(cortex_cmd.app, name="cortex")
 from traylinx.commands import sessions_cmd
 app.add_typer(sessions_cmd.app, name="sessions")
 
+# Register Skills commands (Phase 6)
+from traylinx.commands import skills_cmd
+app.add_typer(skills_cmd.app, name="skills")
+
 
 
 # Load plugins at import time so they're available for command matching

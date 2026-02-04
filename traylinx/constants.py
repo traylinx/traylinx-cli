@@ -160,3 +160,11 @@ MANIFEST_VERSION = "1.0"
 TEMPLATE_BASIC = "basic"
 TEMPLATE_RESEARCH = "research"
 AVAILABLE_TEMPLATES = [TEMPLATE_BASIC, TEMPLATE_RESEARCH]
+
+
+# =============================================================================
+# SKILLS DIRECTORIES
+# =============================================================================
+
+SKILLS_DIR = "~/.traylinx/skills"
+LOCAL_SKILLS_DIR = ".traylinx/skills"

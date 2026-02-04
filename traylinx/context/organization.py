@@ -37,11 +37,12 @@ class ContextManager:
     @staticmethod
     def _get_auth_headers() -> dict[str, str]:
         """Get authorization headers from stored credentials."""
-        creds = AuthManager.get_credentials()
-        if not creds or "access_token" not in creds:
+        # Use get_access_token which handles local expiry/refresh check
+        token = AuthManager.get_access_token()
+        if not token:
             return {}
         return {
-            "Authorization": f"Bearer {creds['access_token']}",
+            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
@@ -68,6 +69,24 @@ class ContextManager:
                 headers=headers,
                 timeout=30,
             )
+            
+            # Handle 401 Unauthorized via refresh retry
+            if response.status_code == 401:
+                console.print("[dim]Access token expired, attempting refresh...[/dim]")
+                if AuthManager.refresh_token():
+                    # Retry with new token
+                    headers = ContextManager._get_auth_headers()
+                    response = httpx.get(
+                        f"{METRICS_API_URL}/user_settings",
+                        params={"client": "cli"},
+                        headers=headers,
+                        timeout=30,
+                    )
+                else:
+                    # Refresh failed
+                    console.print("[yellow]Session expired. Please login again.[/yellow]")
+                    return None
+
             response.raise_for_status()
 
             settings = response.json()
@@ -81,12 +100,6 @@ class ContextManager:
             console.print("[dim]✓ Context loaded from Traylinx[/dim]")
             return context
 
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 401:
-                console.print("[yellow]Session expired. Please login again.[/yellow]")
-            else:
-                console.print(f"[dim]Could not load context: {e.response.status_code}[/dim]")
-            return None
         except httpx.HTTPError as e:
             console.print(f"[dim]Could not connect to Traylinx: {e}[/dim]")
             return None

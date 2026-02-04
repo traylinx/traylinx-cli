@@ -26,8 +26,13 @@ METRICS_API_URL = os.environ.get(
     "TRAYLINX_METRICS_URL", "https://platform.traylinx.com"
 )
 
-app = typer.Typer(help="Manage projects", invoke_without_command=True, no_args_is_help=False)
-keys_app = typer.Typer(help="Manage API keys")
+app = typer.Typer(
+    help="Manage projects",
+    invoke_without_command=True,
+    no_args_is_help=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
+keys_app = typer.Typer(help="Manage API keys", context_settings={"help_option_names": ["-h", "--help"]})
 app.add_typer(keys_app, name="keys")
 
 console = Console()
@@ -69,11 +74,20 @@ def _get_headers() -> dict:
 
 
 @app.command("list")
-def list_projects():
+def list_projects(
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data from server"
+    ),
+):
     """List projects in current organization."""
     if not AuthManager.get_credentials():
         console.print("[red]Not logged in.[/red] Run [cyan]traylinx login[/cyan] first.")
         raise typer.Exit(1) from None
+
+    # Sync with remote if requested
+    if refresh:
+        with console.status("[bold green]Fetching projects from Traylinx..."):
+            ContextManager.load_from_api()
 
     org_id = ContextManager.get_current_organization_id()
     if not org_id:

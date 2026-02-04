@@ -26,6 +26,7 @@ app = typer.Typer(
     name="skills",
     help="🎯 Manage AgentSkills - discover, create, validate, and package skills",
     no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 console = Console()

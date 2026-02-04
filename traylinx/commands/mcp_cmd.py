@@ -28,6 +28,7 @@ mcp_app = typer.Typer(
     name="mcp",
     help="MCP (Model Context Protocol) server management",
     no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 

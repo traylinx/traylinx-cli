@@ -13,7 +13,7 @@ from rich.console import Console
 
 from traylinx.branding import print_logo
 
-app = typer.Typer(help="Help and documentation")
+app = typer.Typer(help="Help and documentation", context_settings={"help_option_names": ["-h", "--help"]})
 console = Console()
 
 # Command documentation

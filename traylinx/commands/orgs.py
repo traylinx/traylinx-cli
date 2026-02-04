@@ -14,7 +14,12 @@ from rich.table import Table
 from traylinx.auth import AuthManager
 from traylinx.context import ContextManager
 
-app = typer.Typer(help="Manage organizations", invoke_without_command=True, no_args_is_help=False)
+app = typer.Typer(
+    help="Manage organizations",
+    invoke_without_command=True,
+    no_args_is_help=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
 console = Console()
 
 
@@ -40,12 +45,21 @@ def orgs_callback(ctx: typer.Context):
 
 
 @app.command("list")
-def list_orgs():
+def list_orgs(
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data from server"
+    ),
+):
     """List available organizations."""
     # Require authentication
     if not AuthManager.get_credentials():
         console.print("[red]Not logged in.[/red] Run [cyan]traylinx login[/cyan] first.")
         raise typer.Exit(1) from None
+
+    # Sync with remote if requested
+    if refresh:
+        with console.status("[bold green]Fetching organizations from Traylinx..."):
+            ContextManager.load_from_api()
 
     orgs = ContextManager.get_organizations()
 

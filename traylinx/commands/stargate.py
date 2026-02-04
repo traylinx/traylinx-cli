@@ -22,6 +22,7 @@ app = typer.Typer(
     name="stargate",
     help="Stargate P2P network commands",
     no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 # --- Connectivity Commands (Phase 2) ---

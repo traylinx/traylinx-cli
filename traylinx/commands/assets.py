@@ -30,7 +30,12 @@ USERS_API_URL = os.environ.get("TRAYLINX_USERS_URL", "https://sentinel.traylinx.
 # Credentials storage directory
 CREDENTIALS_DIR = Path.home() / ".traylinx" / "credentials"
 
-app = typer.Typer(help="Manage project assets", invoke_without_command=True, no_args_is_help=False)
+app = typer.Typer(
+    help="Manage project assets",
+    invoke_without_command=True,
+    no_args_is_help=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
 console = Console()
 
 

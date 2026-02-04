@@ -43,6 +43,7 @@ app = typer.Typer(
     help="CLI for the Traylinx Agent Network",
     no_args_is_help=True,
     rich_markup_mode="rich",
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 console = Console()

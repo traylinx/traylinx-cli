@@ -15,7 +15,7 @@ from rich.table import Table
 
 from traylinx.auth import AuthError, AuthManager
 
-app = typer.Typer(help="Authentication commands")
+app = typer.Typer(help="Authentication commands", context_settings={"help_option_names": ["-h", "--help"]})
 console = Console()
 
 

@@ -21,6 +21,7 @@ app = typer.Typer(
     name="sessions",
     help="📜 Session logs & audit trail",
     no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 

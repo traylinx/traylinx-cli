@@ -14,7 +14,7 @@ from traylinx.auth import CREDENTIALS_FILE, AuthManager
 from traylinx.branding import print_status_header
 from traylinx.constants import get_settings
 
-app = typer.Typer(help="Status commands")
+app = typer.Typer(help="Status commands", context_settings={"help_option_names": ["-h", "--help"]})
 console = Console()
 
 

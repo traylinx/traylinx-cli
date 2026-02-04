@@ -20,8 +20,9 @@ from pathlib import Path
 import httpx
 from rich.console import Console
 
+from traylinx.utils.statebox import StateBox
+
 # Constants
-CREDENTIALS_FILE = Path.home() / ".traylinx" / "credentials.json"
 SENTINEL_URL = os.environ.get(
     "TRAYLINX_AUTH_URL", "https://sentinel.traylinx.com"
 )
@@ -149,26 +150,28 @@ class AuthManager:
 
     @staticmethod
     def save_credentials(data: dict) -> None:
-        """Save credentials to file with secure permissions."""
-        CREDENTIALS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        CREDENTIALS_FILE.write_text(json.dumps(data, indent=2))
-        CREDENTIALS_FILE.chmod(0o600)  # Owner read/write only
+        """Save credentials to file with secure permissions using atomic write."""
+        from traylinx.utils.secure_write import secure_write_json
+
+        secure_write_json(StateBox.credentials_file(), data)
 
     @staticmethod
     def get_credentials() -> dict | None:
         """Load credentials from file."""
-        if not CREDENTIALS_FILE.exists():
+        creds_file = StateBox.credentials_file()
+        if not creds_file.exists():
             return None
         try:
-            return json.loads(CREDENTIALS_FILE.read_text())
+            return json.loads(creds_file.read_text())
         except (OSError, json.JSONDecodeError):
             return None
 
     @staticmethod
     def clear_credentials() -> None:
         """Delete stored credentials."""
-        if CREDENTIALS_FILE.exists():
-            CREDENTIALS_FILE.unlink()
+        creds_file = StateBox.credentials_file()
+        if creds_file.exists():
+            creds_file.unlink()
 
     @staticmethod
     def is_logged_in() -> bool:

@@ -4,6 +4,8 @@ Traylinx CLI - Open Command.
 Opens the Traylinx platform in the default browser.
 """
 
+import webbrowser
+
 import httpx
 from rich.console import Console
 

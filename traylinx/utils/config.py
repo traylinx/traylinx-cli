@@ -5,6 +5,8 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field
 
+from traylinx.utils.statebox import StateBox
+
 
 class ConfigError(Exception):
     """Configuration error."""
@@ -36,7 +38,7 @@ class Config(BaseModel):
 
 def get_config_path() -> Path:
     """Get path to config file."""
-    return Path.home() / ".traylinx" / "config.yaml"
+    return StateBox.config_file()
 
 
 def load_config(config_path: Path | None = None) -> Config:

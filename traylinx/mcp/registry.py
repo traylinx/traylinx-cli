@@ -12,35 +12,29 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     pass
 
+from traylinx.utils.statebox import StateBox
+
 from .models import ServerConfig
-
-
-# Config file location
-MCP_CONFIG_FILE = Path.home() / ".traylinx" / "mcp-servers.json"
-
-
-def _ensure_config_dir() -> None:
-    """Ensure config directory exists."""
-    MCP_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 
 def _load_config() -> dict:
     """Load configuration from file."""
-    if not MCP_CONFIG_FILE.exists():
+    config_file = StateBox.mcp_config_file()
+    if not config_file.exists():
         return {"servers": []}
 
     try:
-        with open(MCP_CONFIG_FILE) as f:
+        with open(config_file) as f:
             return json.load(f)
     except (OSError, json.JSONDecodeError):
         return {"servers": []}
 
 
 def _save_config(config: dict) -> None:
-    """Save configuration to file."""
-    _ensure_config_dir()
-    with open(MCP_CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=2)
+    """Save configuration to file using atomic write."""
+    from traylinx.utils.secure_write import secure_write_json
+
+    secure_write_json(StateBox.mcp_config_file(), config)
 
 
 def list_servers() -> list[ServerConfig]:
@@ -189,4 +183,4 @@ def get_config_path() -> Path:
     Returns:
         Path to mcp-servers.json
     """
-    return MCP_CONFIG_FILE
+    return StateBox.mcp_config_file()

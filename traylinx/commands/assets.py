@@ -27,8 +27,10 @@ METRICS_API_URL = os.environ.get(
 # Users API URL (for creating agent users with OAuth credentials)
 USERS_API_URL = os.environ.get("TRAYLINX_USERS_URL", "https://sentinel.traylinx.com")
 
-# Credentials storage directory
-CREDENTIALS_DIR = Path.home() / ".traylinx" / "credentials"
+# Credentials storage via StateBox
+from traylinx.utils.statebox import StateBox
+
+CREDENTIALS_DIR = StateBox.credentials_dir()
 
 app = typer.Typer(
     help="Manage project assets",

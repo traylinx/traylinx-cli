@@ -21,12 +21,13 @@ import httpx
 from rich.console import Console
 
 from traylinx.auth import AuthManager
+from traylinx.utils.statebox import StateBox
 
 # Constants
-CONTEXT_FILE = Path.home() / ".traylinx" / "context.json"
 METRICS_API_URL = os.environ.get(
-    "TRAYLINX_METRICS_URL", "https://platform.traylinx.com"
+    "TRAYLINX_METRICS_URL", "https://api.makakoo.com/ma-metrics-wsp-ms/v1/api"
 )
+API_KEY = "2qQaEiyjeqd0F141C6cFeqpJ353Y7USl"
 
 console = Console()
 
@@ -43,6 +44,7 @@ class ContextManager:
             return {}
         return {
             "Authorization": f"Bearer {token}",
+            "Api-Key": API_KEY,
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
@@ -83,8 +85,8 @@ class ContextManager:
                         timeout=30,
                     )
                 else:
-                    # Refresh failed
-                    console.print("[yellow]Session expired. Please login again.[/yellow]")
+                    # Refresh failed or retry failed
+                    # return None silently to fall back to local context
                     return None
 
             response.raise_for_status()
@@ -101,7 +103,9 @@ class ContextManager:
             return context
 
         except httpx.HTTPError as e:
-            console.print(f"[dim]Could not connect to Traylinx: {e}[/dim]")
+            # Suppress 401s to allow fallback to local context without noise
+            if getattr(e.response, "status_code", 0) != 401:
+                console.print(f"[dim]Could not connect to Traylinx: {e}[/dim]")
             return None
 
     @staticmethod
@@ -130,15 +134,16 @@ class ContextManager:
 
     @staticmethod
     def _save_context(context: dict[str, Any]) -> None:
-        """Save context to local file."""
-        CONTEXT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with open(CONTEXT_FILE, "w") as f:
-            json.dump(context, f, indent=2)
+        """Save context to local file using atomic write."""
+        from traylinx.utils.secure_write import secure_write_json
+
+        secure_write_json(StateBox.context_file(), context)
 
     @staticmethod
     def _load_context() -> dict[str, Any]:
         """Load context from local file."""
-        if not CONTEXT_FILE.exists():
+        context_file = StateBox.context_file()
+        if not context_file.exists():
             return {
                 "current_organization_id": None,
                 "current_project_id": None,
@@ -146,7 +151,7 @@ class ContextManager:
             }
 
         try:
-            with open(CONTEXT_FILE) as f:
+            with open(context_file) as f:
                 return json.load(f)
         except (OSError, json.JSONDecodeError):
             return {
@@ -296,8 +301,9 @@ class ContextManager:
     @staticmethod
     def clear() -> None:
         """Clear all context (on logout)."""
-        if CONTEXT_FILE.exists():
-            CONTEXT_FILE.unlink()
+        context_file = StateBox.context_file()
+        if context_file.exists():
+            context_file.unlink()
 
     @staticmethod
     def require_organization() -> str:

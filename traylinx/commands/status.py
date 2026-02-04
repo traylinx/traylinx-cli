@@ -10,9 +10,10 @@ import typer
 from rich.console import Console
 
 from traylinx import __version__
-from traylinx.auth import CREDENTIALS_FILE, AuthManager
+from traylinx.auth import AuthManager
 from traylinx.branding import print_status_header
 from traylinx.constants import get_settings
+from traylinx.utils.statebox import StateBox
 
 app = typer.Typer(help="Status commands", context_settings={"help_option_names": ["-h", "--help"]})
 console = Console()
@@ -66,7 +67,7 @@ def status():
             except ValueError:
                 pass
 
-        console.print(f"  Credentials: {CREDENTIALS_FILE}")
+        console.print(f"  Credentials: {StateBox.credentials_file()}")
     else:
         console.print("  Status: [yellow]Not logged in[/yellow]")
         console.print("  Run [cyan]traylinx login[/cyan] to authenticate")

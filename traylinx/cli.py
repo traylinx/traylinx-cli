@@ -178,6 +178,11 @@ app.add_typer(sessions_cmd.app, name="sessions")
 # Register Skills commands (Phase 6)
 from traylinx.commands import skills_cmd
 app.add_typer(skills_cmd.app, name="skills")
+app.add_typer(skills_cmd.app, name="skill", help="Alias for 'skills'")
+
+# Register Sentinel Pass commands (Phase 7)
+from traylinx.commands import sentinel
+app.add_typer(sentinel.app, name="sentinel")
 
 
 

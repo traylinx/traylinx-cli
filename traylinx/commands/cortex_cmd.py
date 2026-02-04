@@ -26,20 +26,22 @@ app = typer.Typer(
 
 # --- Configuration Management ---
 
-CORTEX_CONFIG_FILE = Path.home() / ".traylinx" / "cortex.json"
+from traylinx.utils.statebox import StateBox
 
 
 def load_cortex_config() -> dict:
     """Load Cortex configuration from disk."""
-    if CORTEX_CONFIG_FILE.exists():
-        return json.loads(CORTEX_CONFIG_FILE.read_text())
+    config_file = StateBox.cortex_config_file()
+    if config_file.exists():
+        return json.loads(config_file.read_text())
     return {}
 
 
 def save_cortex_config(config: dict):
-    """Save Cortex configuration to disk."""
-    CORTEX_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    CORTEX_CONFIG_FILE.write_text(json.dumps(config, indent=2))
+    """Save Cortex configuration to disk using atomic write."""
+    from traylinx.utils.secure_write import secure_write_json
+
+    secure_write_json(StateBox.cortex_config_file(), config)
 
 
 def get_cortex_client():

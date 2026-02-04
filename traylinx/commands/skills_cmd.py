@@ -34,7 +34,9 @@ console = Console()
 
 def get_default_skills_dir() -> Path:
     """Get the default skills directory."""
-    return Path.home() / ".traylinx" / "skills"
+    from traylinx.utils.statebox import StateBox
+
+    return StateBox.skills_dir()
 
 
 @app.command(name="list")

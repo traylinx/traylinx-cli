@@ -177,8 +177,10 @@ def status_command():
             nat_type = nat_status.get("nat_type", "unknown")
             if nat_type == "public":
                 table.add_row("NAT Status", "[green]Public IP[/green]")
-            elif nat_type == "nat":
-                table.add_row("NAT Status", "[yellow]Behind NAT[/yellow]")
+            elif nat_type in ("nat", "cone_nat"):
+                table.add_row("NAT Status", "[yellow]Behind NAT (Cone)[/yellow]")
+            elif nat_type == "symmetric_nat":
+                table.add_row("NAT Status", "[red]Behind NAT (Symmetric)[/red]")
             elif nat_type == "nats_native":
                 table.add_row("NAT Status", "[dim]NATS (no NAT issue)[/dim]")
             else:

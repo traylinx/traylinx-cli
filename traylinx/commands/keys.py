@@ -11,6 +11,7 @@ Commands:
 
 import json
 import os
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -48,12 +49,17 @@ console = Console()
 
 
 def _get_auth_headers() -> dict:
-    """Get auth headers for API requests."""
-    creds = AuthManager.get_credentials()
-    if not creds:
+    """Get auth headers for API requests with automatic token refresh."""
+    # Use get_access_token() which handles expiration and refresh automatically
+    token = AuthManager.get_access_token()
+    
+    if not token:
+        console.print("[red]Authentication failed.[/red]")
+        console.print("[dim]Run 'traylinx login' to authenticate[/dim]")
         return {}
+    
     return {
-        "Authorization": f"Bearer {creds['access_token']}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
@@ -65,43 +71,143 @@ def _get_api_keys_dir() -> Path:
 
 
 def _save_api_key(note: str, data: dict) -> Path:
-    """Save API key securely to local storage."""
+    """Save API key securely to local storage.
+    
+    Uses key ID as primary identifier to prevent collisions.
+    Filename format: {key_id}_{sanitized_note}.json
+    
+    Args:
+        note: User-provided note for the key
+        data: Key data including id, secret_key, etc.
+    
+    Returns:
+        Path to saved key file
+    
+    Raises:
+        ValueError: If key ID is missing or file collision detected
+    """
     from traylinx.utils.secure_write import secure_write_json
+    import uuid
 
     keys_dir = _get_api_keys_dir()
     StateBox.ensure_dir(keys_dir)
 
-    # Generate safe filename from note
-    safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in note)
-    if not safe_name:
-        safe_name = f"key_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    # Validate note
+    if not note or not note.strip():
+        note = "unnamed"
+    note = note.strip()
+    if len(note) > 100:
+        console.print("[yellow]Note truncated to 100 characters[/yellow]")
+        note = note[:100]
 
-    key_file = keys_dir / f"{safe_name}.json"
+    # Get or generate key ID
+    key_id = data.get("id")
+    if not key_id:
+        # Fallback for keys without ID (shouldn't happen with API keys)
+        key_id = str(uuid.uuid4())
+        data["id"] = key_id
+        console.print(f"[dim]Generated key ID: {key_id}[/dim]")
+
+    # Sanitize note for filename (keep only alphanumeric, dash, underscore)
+    safe_note = "".join(c if c.isalnum() or c in "-_" else "_" for c in note)
+    if not safe_note:
+        safe_note = "unnamed"
+
+    # Create filename: {key_id}_{note}.json
+    # This ensures uniqueness even with duplicate notes
+    filename = f"{key_id}_{safe_note}.json"
+    key_file = keys_dir / filename
+
+    # Check for existing file with different key ID (shouldn't happen, but be safe)
+    if key_file.exists():
+        try:
+            existing_data = json.loads(key_file.read_text())
+            existing_id = existing_data.get("id")
+            if existing_id and existing_id != key_id:
+                console.print(f"[red]Error: File collision detected[/red]")
+                console.print(f"[dim]File: {key_file}[/dim]")
+                console.print(f"[dim]Existing ID: {existing_id}[/dim]")
+                console.print(f"[dim]New ID: {key_id}[/dim]")
+                raise ValueError(f"File collision: {filename} exists with different key ID")
+        except json.JSONDecodeError:
+            # Corrupted file, overwrite it
+            console.print(f"[yellow]Warning: Overwriting corrupted file {filename}[/yellow]")
+
     secure_write_json(key_file, data)
     return key_file
 
 
 def _load_api_key(name: str) -> dict | None:
-    """Load API key from local storage by name."""
+    """Load API key from local storage by name or ID.
+    
+    Lookup order:
+    1. Exact filename match: {name}.json (legacy format)
+    2. Key ID match: {name}_*.json
+    3. Note suffix match: *_{name}.json
+    4. Search all files for matching note or ID (case-sensitive)
+    
+    Args:
+        name: Key name, note, or ID to search for
+    
+    Returns:
+        Key data dict or None if not found
+    """
     keys_dir = _get_api_keys_dir()
-    key_file = keys_dir / f"{name}.json"
-
-    if not key_file.exists():
-        # Try to find by note in all files
-        if keys_dir.exists():
-            for f in keys_dir.glob("*.json"):
-                try:
-                    data = json.loads(f.read_text())
-                    if data.get("note", "").lower() == name.lower():
-                        return data
-                except (OSError, json.JSONDecodeError):
-                    continue
+    if not keys_dir.exists():
         return None
 
-    try:
-        return json.loads(key_file.read_text())
-    except (OSError, json.JSONDecodeError):
-        return None
+    # Try exact filename match first (legacy format)
+    exact_file = keys_dir / f"{name}.json"
+    if exact_file.exists():
+        try:
+            return json.loads(exact_file.read_text())
+        except (OSError, json.JSONDecodeError) as e:
+            console.print(f"[yellow]Warning: Could not read {exact_file.name}: {e}[/yellow]")
+            return None
+
+    # Try key ID prefix match: {key_id}_*.json
+    id_matches = list(keys_dir.glob(f"{name}_*.json"))
+    if id_matches:
+        if len(id_matches) > 1:
+            console.print(f"[yellow]Warning: Multiple keys match ID '{name}':[/yellow]")
+            for m in id_matches:
+                console.print(f"  - {m.name}")
+            console.print("[dim]Using first match. Specify full filename to disambiguate.[/dim]")
+        try:
+            return json.loads(id_matches[0].read_text())
+        except (OSError, json.JSONDecodeError) as e:
+            console.print(f"[yellow]Warning: Could not read {id_matches[0].name}: {e}[/yellow]")
+            return None
+
+    # Try note suffix match: *_{name}.json
+    note_matches = list(keys_dir.glob(f"*_{name}.json"))
+    if note_matches:
+        if len(note_matches) > 1:
+            console.print(f"[yellow]Warning: Multiple keys match note '{name}':[/yellow]")
+            for m in note_matches:
+                console.print(f"  - {m.name}")
+            console.print("[dim]Using first match. Specify key ID to disambiguate.[/dim]")
+        try:
+            return json.loads(note_matches[0].read_text())
+        except (OSError, json.JSONDecodeError) as e:
+            console.print(f"[yellow]Warning: Could not read {note_matches[0].name}: {e}[/yellow]")
+            return None
+
+    # Fallback: search all files for matching note or ID (case-sensitive)
+    for key_file in keys_dir.glob("*.json"):
+        try:
+            data = json.loads(key_file.read_text())
+            # Match by note (exact, case-sensitive)
+            if data.get("note") == name:
+                return data
+            # Match by ID (in case filename doesn't match)
+            if data.get("id") == name:
+                return data
+        except (OSError, json.JSONDecodeError) as e:
+            console.print(f"[dim]Warning: Skipping corrupted file {key_file.name}: {e}[/dim]")
+            continue
+
+    return None
 
 
 def _list_local_keys() -> list[dict]:
@@ -432,20 +538,48 @@ def delete_key(
         help="Skip confirmation",
     ),
 ):
-    """Delete an API key locally and/or from server."""
+    """Delete an API key locally and/or from server.
+    
+    By default, deletes from both server and local storage.
+    Use --local to only delete the local copy.
+    
+    IMPORTANT: The secret key cannot be recovered after deletion from the server.
+    """
     _require_auth()
 
     # Find local key
     local_key = _load_api_key(name)
     key_id = local_key.get("id") if local_key else name
 
+    # Show what will be deleted
+    console.print()
+    if local_key:
+        console.print("[bold]Key to delete:[/bold]")
+        console.print(f"  Note:       {local_key.get('note', 'N/A')}")
+        console.print(f"  Public Key: {local_key.get('public_key', 'N/A')}")
+        console.print(f"  ID:         {key_id}")
+    else:
+        console.print(f"[yellow]Warning: Key '{name}' not found locally[/yellow]")
+        if not local_only:
+            console.print("[dim]Will attempt to delete from server using provided ID[/dim]")
+        else:
+            console.print("[red]Cannot delete: key not found locally[/red]")
+            raise typer.Exit(1)
+
     # Confirm deletion
     if not force:
         from InquirerPy import inquirer
 
-        action = "locally" if local_only else "from server and locally"
+        console.print()
+        if local_only:
+            console.print("[yellow]⚠ This will delete the LOCAL copy only[/yellow]")
+            console.print("[dim]The key will remain on the server[/dim]")
+        else:
+            console.print("[yellow]⚠ This will delete the key from SERVER and locally[/yellow]")
+            console.print("[yellow]⚠ The secret key CANNOT be recovered after deletion[/yellow]")
+
         confirm = inquirer.confirm(
-            message=f"Delete API key '{name}' {action}?",
+            message=f"Are you sure you want to delete '{name}'?",
             default=False,
         ).execute()
 
@@ -453,46 +587,114 @@ def delete_key(
             console.print("[dim]Cancelled.[/dim]")
             raise typer.Exit(0)
 
-    # Delete from server if not local_only
+    # Track deletion status
+    server_deleted = False
+    local_deleted = False
+
+    # Step 1: Delete from server FIRST (if not local_only)
     if not local_only and key_id:
         org_id = ContextManager.get_current_organization_id()
         project_id = local_key.get("project_id") if local_key else ContextManager.get_current_project_id()
 
-        if org_id and project_id:
-            try:
-                response = httpx.delete(
-                    f"{METRICS_API_URL}/organizations/{org_id}/projects/{project_id}/api_keys/{key_id}",
-                    headers=_get_auth_headers(),
-                    timeout=30,
-                )
-                if response.status_code in (200, 204, 404):
-                    console.print("[green]Deleted from server.[/green]")
-                else:
-                    console.print(f"[yellow]Server deletion returned {response.status_code}[/yellow]")
-            except httpx.HTTPError as e:
-                console.print(f"[yellow]Warning: Could not delete from server: {e}[/yellow]")
+        if not org_id or not project_id:
+            console.print("[red]Error: No organization or project context[/red]")
+            console.print("[dim]Run 'traylinx orgs use' and 'traylinx projects use' first[/dim]")
+            raise typer.Exit(1)
 
-    # Delete local file
-    keys_dir = _get_api_keys_dir()
-    safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in name)
-    local_file = keys_dir / f"{safe_name}.json"
+        console.print(f"\n[dim]Deleting from server...[/dim]")
+        try:
+            response = httpx.delete(
+                f"{METRICS_API_URL}/organizations/{org_id}/projects/{project_id}/api_keys/{key_id}",
+                headers=_get_auth_headers(),
+                timeout=30,
+            )
 
-    if local_file.exists():
-        local_file.unlink()
-        console.print("[green]Deleted local copy.[/green]")
-    elif local_key:
-        # Try to find and delete by searching
-        for f in keys_dir.glob("*.json"):
-            try:
-                data = json.loads(f.read_text())
-                if data.get("note", "").lower() == name.lower():
-                    f.unlink()
-                    console.print("[green]Deleted local copy.[/green]")
-                    break
-            except (OSError, json.JSONDecodeError):
-                continue
+            if response.status_code in (200, 204):
+                console.print("[green]✓ Deleted from server[/green]")
+                server_deleted = True
+            elif response.status_code == 404:
+                console.print("[yellow]⚠ Key not found on server (may have been deleted already)[/yellow]")
+                server_deleted = True  # Treat as success
+            else:
+                console.print(f"[red]✗ Server deletion failed: HTTP {response.status_code}[/red]")
+                if response.text:
+                    console.print(f"[dim]{response.text[:200]}[/dim]")
+                console.print("\n[yellow]⚠ Local copy will NOT be deleted to prevent data loss[/yellow]")
+                console.print("[dim]Fix the server issue and try again, or use --local to delete only locally[/dim]")
+                raise typer.Exit(1)
 
-    console.print(f"[green]✓ API key '{name}' deleted.[/green]")
+        except httpx.TimeoutException:
+            console.print("[red]✗ Server deletion timed out[/red]")
+            console.print("\n[yellow]⚠ Local copy will NOT be deleted to prevent data loss[/yellow]")
+            console.print("[dim]Check your network connection and try again[/dim]")
+            raise typer.Exit(1)
+
+        except httpx.HTTPError as e:
+            console.print(f"[red]✗ Network error during server deletion: {e}[/red]")
+            console.print("\n[yellow]⚠ Local copy will NOT be deleted to prevent data loss[/yellow]")
+            console.print("[dim]Check your network connection and try again[/dim]")
+            raise typer.Exit(1)
+
+    # Step 2: Delete local file ONLY if server deletion succeeded OR local_only flag is set
+    if local_only or server_deleted:
+        if local_key:
+            console.print(f"\n[dim]Deleting local copy...[/dim]")
+            keys_dir = _get_api_keys_dir()
+
+            # Try to find and delete the file
+            deleted_files = []
+
+            # Try direct filename match (new format: {id}_{note}.json)
+            if key_id:
+                for pattern in [f"{key_id}_*.json", f"*_{key_id}.json"]:
+                    for f in keys_dir.glob(pattern):
+                        try:
+                            data = json.loads(f.read_text())
+                            if data.get("id") == key_id:
+                                f.unlink()
+                                deleted_files.append(f.name)
+                        except (OSError, json.JSONDecodeError):
+                            continue
+
+            # Try legacy filename format
+            safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in name)
+            legacy_file = keys_dir / f"{safe_name}.json"
+            if legacy_file.exists():
+                try:
+                    data = json.loads(legacy_file.read_text())
+                    if data.get("id") == key_id or data.get("note") == name:
+                        legacy_file.unlink()
+                        deleted_files.append(legacy_file.name)
+                except (OSError, json.JSONDecodeError):
+                    pass
+
+            if deleted_files:
+                console.print(f"[green]✓ Deleted local copy: {', '.join(deleted_files)}[/green]")
+                local_deleted = True
+            else:
+                console.print("[yellow]⚠ Local file not found (may have been deleted already)[/yellow]")
+                local_deleted = True  # Treat as success
+        else:
+            console.print("[dim]No local copy to delete[/dim]")
+            local_deleted = True
+
+    # Summary
+    console.print()
+    if local_only:
+        if local_deleted:
+            console.print(f"[green]✓ API key '{name}' deleted locally[/green]")
+            console.print("[dim]Note: Key still exists on server[/dim]")
+        else:
+            console.print(f"[red]✗ Failed to delete local copy[/red]")
+            raise typer.Exit(1)
+    else:
+        if server_deleted and local_deleted:
+            console.print(f"[green]✓ API key '{name}' deleted successfully[/green]")
+        elif server_deleted:
+            console.print(f"[yellow]⚠ Deleted from server but local copy not found[/yellow]")
+        else:
+            console.print(f"[red]✗ Deletion failed[/red]")
+            raise typer.Exit(1)
 
 
 @app.command("export")

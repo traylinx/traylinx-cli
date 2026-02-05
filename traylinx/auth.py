@@ -291,6 +291,7 @@ class AuthManager:
             },
         ]
 
+        last_status = None
         for endpoint in endpoints:
             try:
                 if endpoint["json"]:
@@ -322,11 +323,16 @@ class AuthManager:
                     # Endpoint not available, try next
                     continue
                 else:
-                    # Log error for debugging
-                    console.print(f"[dim]Token refresh failed: {response.status_code}[/dim]")
+                    # Endpoint available but returned error
+                    last_status = response.status_code
+                    continue
 
             except httpx.HTTPError as e:
                 console.print(f"[dim]Token refresh error: {e}[/dim]")
+
+        # Only print error if we got a status code (and failed all attempts)
+        if last_status:
+            console.print(f"[dim]Token refresh failed: {last_status}[/dim]")
 
         return False
 

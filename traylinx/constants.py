@@ -59,9 +59,9 @@ ENDPOINTS = Endpoints()
 # =============================================================================
 
 DEFAULT_URLS = {
-    ENV_DEV: "http://localhost:8000",
-    ENV_STAGING: "https://staging-api.traylinx.com",
-    ENV_PROD: "https://api.traylinx.com",
+    ENV_DEV: "https://discovery.traylinx.com",
+    ENV_STAGING: "https://discovery.traylinx.com",
+    ENV_PROD: "https://discovery.traylinx.com",
 }
 
 

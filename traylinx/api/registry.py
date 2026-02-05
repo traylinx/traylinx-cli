@@ -25,13 +25,15 @@ class RegistryClient:
     def __init__(
         self,
         base_url: str,
-        agent_key: str,
-        secret_token: str,
+        agent_user_id: str,      # Developer's agent user ID (from Sentinel Pass)
+        client_secret: str,       # Developer's client secret (from Sentinel Pass)
+        agent_key: str,          # The agent being published
         timeout: float = DEFAULT_TIMEOUT,
     ):
         self.base_url = base_url.rstrip("/")
+        self.agent_user_id = agent_user_id
+        self.client_secret = client_secret
         self.agent_key = agent_key
-        self.secret_token = secret_token
         self.timeout = timeout
 
     def _build_envelope(self, action: str) -> dict:
@@ -43,11 +45,12 @@ class RegistryClient:
         }
 
     def _build_headers(self) -> dict:
-        """Build request headers."""
+        """Build request headers with correct A2A authentication."""
         return {
             "Content-Type": CONTENT_TYPE_A2A,
-            "X-Agent-Key": self.agent_key,
-            "X-Agent-Secret-Token": self.secret_token,
+            "X-Agent-Key": self.agent_key,                    # Agent being published
+            "X-Agent-Secret-Token": self.client_secret,       # Developer's secret
+            "X-Agent-User-Id": self.agent_user_id,           # Developer's agent user ID (REQUIRED!)
         }
 
     def publish(self, manifest: AgentManifest) -> dict[str, Any]:

@@ -78,16 +78,19 @@ def status():
     console.print("[bold]⚙️  Configuration[/bold]")
     console.print(f"  Environment: {settings.env}")
     console.print(f"  Registry: {settings.effective_registry_url}")
-
-    if settings.agent_key:
-        console.print("  Agent Key: [green]✓ Set[/green]")
+    
+    # Publishing identity status
+    import os
+    developer_agent_id = os.environ.get("TRAYLINX_DEVELOPER_AGENT_ID")
+    developer_secret = os.environ.get("TRAYLINX_DEVELOPER_SECRET")
+    
+    if developer_agent_id and developer_secret:
+        # Truncate agent ID for display
+        display_id = developer_agent_id[:20] + "..." if len(developer_agent_id) > 20 else developer_agent_id
+        console.print(f"  Publishing Identity: [green]✓ Configured[/green] ({display_id})")
     else:
-        console.print("  Agent Key: [dim]Not set[/dim]")
-
-    if settings.secret_token:
-        console.print("  Secret Token: [green]✓ Set[/green]")
-    else:
-        console.print("  Secret Token: [dim]Not set[/dim]")
+        console.print("  Publishing Identity: [yellow]✗ Not configured[/yellow]")
+        console.print("    [dim]Run 'traylinx sentinel pass create --name my-developer-identity'[/dim]")
 
     console.print()
 

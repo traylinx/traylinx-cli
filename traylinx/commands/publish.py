@@ -81,25 +81,24 @@ def publish_command(
         f"[green]✓[/green] Manifest valid: [bold]{manifest.info.name}[/bold] v{manifest.info.version}"
     )
 
-    # Step 3: Get credentials
-    agent_key = settings.agent_key
-    secret_token = settings.secret_token
+    # Step 3: Get developer credentials for publishing
+    # Publishing requires YOUR Sentinel Pass credentials (not the agent's)
+    import os
+    
+    developer_agent_id = os.environ.get("TRAYLINX_DEVELOPER_AGENT_ID")
+    developer_secret = os.environ.get("TRAYLINX_DEVELOPER_SECRET")
 
-    # Try config file if env vars not set
-    if not agent_key or not secret_token:
-        try:
-            config = load_config()
-            agent_key = agent_key or config.credentials.agent_key
-            secret_token = secret_token or config.credentials.secret_token
-        except ConfigError:
-            pass
-
-    if not agent_key or not secret_token:
-        console.print("[bold red]Error:[/bold red] Missing credentials")
-        console.print("\nSet environment variables:")
-        console.print("  export TRAYLINX_AGENT_KEY=your-agent-key")
-        console.print("  export TRAYLINX_SECRET_TOKEN=your-secret-token")
-        console.print("\nOr create ~/.traylinx/config.yaml")
+    if not developer_agent_id or not developer_secret:
+        console.print("[bold red]Error:[/bold red] Developer credentials not set")
+        console.print("\n[bold]Publishing requires a Sentinel Pass for authentication.[/bold]")
+        console.print("\n[bold cyan]Step 1:[/bold cyan] Create a Sentinel Pass for yourself:")
+        console.print("  $ traylinx sentinel pass create --name my-developer-identity")
+        console.print("\n[bold cyan]Step 2:[/bold cyan] Set environment variables:")
+        console.print("  export TRAYLINX_DEVELOPER_AGENT_ID=\"agent-user-xxx\"")
+        console.print("  export TRAYLINX_DEVELOPER_SECRET=\"secret-xxx\"")
+        console.print("\n[bold cyan]Step 3:[/bold cyan] Publish your agent:")
+        console.print("  $ traylinx publish")
+        console.print("\n[dim]Note: This is YOUR identity for publishing, separate from the agent's identity.[/dim]")
         raise typer.Exit(1) from None
 
     # Step 4: Determine registry URL
@@ -131,8 +130,9 @@ def publish_command(
 
         client = RegistryClient(
             base_url=url,
-            agent_key=agent_key,
-            secret_token=secret_token,
+            agent_user_id=developer_agent_id,
+            client_secret=developer_secret,
+            agent_key=manifest.info.name,  # The agent being published
         )
 
         try:

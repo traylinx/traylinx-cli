@@ -27,7 +27,8 @@ from traylinx.utils.statebox import StateBox
 METRICS_API_URL = os.environ.get(
     "TRAYLINX_METRICS_URL", "https://api.makakoo.com/ma-metrics-wsp-ms/v1/api"
 )
-API_KEY = "2qQaEiyjeqd0F141C6cFeqpJ353Y7USl"
+# API Key must be set via environment variable for security
+API_KEY = os.environ.get("TRAYLINX_METRICS_API_KEY")
 
 console = Console()
 
@@ -42,12 +43,19 @@ class ContextManager:
         token = AuthManager.get_access_token()
         if not token:
             return {}
-        return {
+        
+        headers = {
             "Authorization": f"Bearer {token}",
-            "Api-Key": API_KEY,
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
+        
+        # Add API key if available (optional for some endpoints)
+        api_key = os.environ.get("TRAYLINX_METRICS_API_KEY")
+        if api_key:
+            headers["Api-Key"] = api_key
+        
+        return headers
 
     @staticmethod
     def load_from_api() -> dict[str, Any] | None:

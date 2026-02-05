@@ -184,6 +184,10 @@ app.add_typer(skills_cmd.app, name="skill", help="Alias for 'skills'")
 from traylinx.commands import sentinel
 app.add_typer(sentinel.app, name="sentinel")
 
+# Register API Keys management commands (Phase 8)
+from traylinx.commands import keys
+app.add_typer(keys.app, name="keys")
+
 
 
 # Load plugins at import time so they're available for command matching

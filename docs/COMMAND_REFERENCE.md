@@ -10,6 +10,35 @@ Complete reference for all commands available in the Traylinx CLI v0.3.0.
 
 ---
 
+## 🔐 Security & Keys
+
+Manage authentication and API keys.
+
+| Command                   | Description                    |
+| ------------------------- | ------------------------------ |
+| `tx projects keys create` | Create a new API key           |
+| `tx projects keys list`   | List API keys (server + local) |
+| `tx keys create`          | Create API key (shortcut)      |
+| `tx keys list`            | List API keys (shortcut)       |
+| `tx keys show`            | Show stored key details        |
+| `tx keys delete`          | Delete an API key              |
+| `tx keys export`          | Export key for switchAILocal   |
+
+### `tx keys create`
+| Option           | Description                                 |
+| ---------------- | ------------------------------------------- |
+| `--note <note>`  | Note/description for the key                |
+| `--save`         | Save locally (required to see secret later) |
+| `--project <id>` | Project ID (defaults to current context)    |
+
+### `tx keys export`
+| Option             | Description                                   |
+| ------------------ | --------------------------------------------- |
+| `--format <fmt>`   | Export format: `yaml`, `env`, `json`          |
+| `--base-url <url>` | Base URL for switchAI (default: platform url) |
+
+---
+
 ## 🎯 Skills Management (v0.3.0)
 
 Extend CLI capabilities with AgentSkills. Discover, create, and package skills.
@@ -112,13 +141,14 @@ Start the agent in the current directory.
 
 ## 📂 Project Management
 
-| Command                     | Description                   |
-| --------------------------- | ----------------------------- |
-| `tx projects list`          | List projects in current org  |
-| `tx projects use <project>` | Switch to a different project |
-| `tx projects show`          | Show project details          |
-| `tx projects create`        | Create a new project          |
-| `tx projects keys`          | Manage API keys               |
+| Command                     | Description                    |
+| --------------------------- | ------------------------------ |
+| `tx projects list`          | List projects in current org   |
+| `tx projects use <project>` | Switch to a different project  |
+| `tx projects show`          | Show project details           |
+| `tx projects create`        | Create a new project           |
+| `tx projects create`        | Create a new project           |
+| `tx projects keys`          | Manage API keys (see Security) |
 
 ---
 

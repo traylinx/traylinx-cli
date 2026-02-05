@@ -38,8 +38,9 @@ COMMANDS = {
     "Security & Authentication": [
         ("assets list", "List assets in current project"),
         ("assets create sentinel-pass", "Create A2A credentials"),
-        ("projects keys list", "List API keys"),
-        ("projects keys create", "Create new API key"),
+        ("keys create", "Create new API key"),
+        ("keys list", "List API keys"),
+        ("keys export", "Export key for switchAILocal"),
     ],
     "Plugins": [
         ("plugin list", "Show installed plugins"),
@@ -127,6 +128,23 @@ for A2A (Agent-to-Agent) authentication.
 [bold]Example:[/bold]
   $ traylinx assets create sentinel-pass "my-agent" --save
   # Saves credentials to ~/.traylinx/credentials/
+""",
+    "keys": """
+[bold]traylinx keys[/bold]
+
+Manage API keys for your current project. These keys are used to
+authenticate with the Traylinx API (e.g., from switchAILocal).
+
+[bold]Commands:[/bold]
+  traylinx keys create       Create new API key (--save to store locally)
+  traylinx keys list         List API keys from server and local storage
+  traylinx keys show <name>  Show stored key details
+  traylinx keys delete       Delete an API key
+  traylinx keys export       Export key for switchAILocal config
+
+[bold]Example:[/bold]
+  $ traylinx keys create --note "my-app" --save
+  $ traylinx keys export --format yaml
 """,
     "init": """
 [bold]traylinx init[/bold]

@@ -157,6 +157,11 @@ class StateBox:
         """Ephemeral cache directory (~/.traylinx/cache/)."""
         return cls.root() / "cache"
 
+    @classmethod
+    def api_keys_dir(cls) -> Path:
+        """API keys storage directory (~/.traylinx/credentials/api-keys/)."""
+        return cls.credentials_dir() / "api-keys"
+
     # =========================================================================
     # Utility Methods
     # =========================================================================

@@ -67,7 +67,8 @@ def status():
             except ValueError:
                 pass
 
-        console.print(f"  Credentials: {StateBox.credentials_file()}")
+
+        # console.print(f"  Credentials: {StateBox.credentials_file()}")
     else:
         console.print("  Status: [yellow]Not logged in[/yellow]")
         console.print("  Run [cyan]traylinx login[/cyan] to authenticate")

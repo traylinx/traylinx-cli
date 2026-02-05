@@ -24,6 +24,16 @@ app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 
+# --- Mount Chat Command from Integrated Module ---
+
+try:
+    from traylinx.cortex.chat.interface import chat_app
+
+    app.add_typer(chat_app, name="chat")
+except ImportError:
+    # cortex module not available (shouldn't happen)
+    pass
+
 # --- Configuration Management ---
 
 from traylinx.utils.statebox import StateBox

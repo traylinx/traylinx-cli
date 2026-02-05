@@ -63,12 +63,17 @@ tx skills package ./my-new-skill
 
 ### 5. Installation
 
-Install skills into your global library (`~/.traylinx/skills/`):
+Install skills into your global library. By default, skills are installed to `~/.traylinx/skills/`:
 
 ```bash
+# Install from .skill package (installs to ~/.traylinx/skills/ by default)
 tx skills install ./my-new-skill.skill
-# OR install from source directory
+
+# Install from source directory (installs to ~/.traylinx/skills/ by default)
 tx skills install ./my-new-skill
+
+# Install to custom location (optional)
+tx skills install ./my-new-skill --target /custom/path/skills
 ```
 
 ## 🔍 Discovery

@@ -63,6 +63,13 @@ Extend CLI capabilities with AgentSkills. Discover, create, and package skills.
 | `--output <dir>`      | Directory to create the skill in (default: cwd)  |
 | `--resources <types>` | Comma-separated list (scripts,references,assets) |
 
+### `tx skills install`
+| Option             | Description                                                |
+| ------------------ | ---------------------------------------------------------- |
+| `--target <path>`  | Install to custom directory (default: `~/.traylinx/skills`) |
+
+**Default behavior**: Skills are installed to `~/.traylinx/skills/` when `--target` is not specified.
+
 ---
 
 ## 🐳 Docker-Powered Agent Commands

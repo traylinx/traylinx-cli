@@ -132,6 +132,15 @@ tx call <peer_id> ping
 | `tx sessions list`      | List saved sessions  |
 | `tx sessions view <id>` | View session details |
 
+### 🔐 Security & Keys (v0.3.0)
+
+| Command               | Description                   |
+| --------------------- | ----------------------------- |
+| `tx keys create`      | Create new API key            |
+| `tx keys list`        | List API keys                 |
+| `tx keys export`      | Export keys for switchAILocal |
+| `tx keys show/delete` | Manage stored keys            |
+
 ### 🎯 Skills Management (v0.3.0)
 
 | Command                      | Description              |
